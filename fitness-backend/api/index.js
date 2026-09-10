@@ -1,4 +1,4 @@
-const { app, connectDatabase } = require("../server");
+const { app, connectDatabase } = require("../local-server");
 
 module.exports = async (req, res) => {
   try {
