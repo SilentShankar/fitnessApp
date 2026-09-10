@@ -13,8 +13,9 @@ services:
       - key: CLIENT_URL
         value: https://forgefit-web.onrender.com
 
-  - type: static_site
+  - type: web
     name: forgefit-web
+    runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
