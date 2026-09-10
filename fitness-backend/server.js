@@ -175,8 +175,10 @@ const startServer = async () => {
   });
 };
 
-startServer().catch((err) => {
-  console.error("MongoDB startup failed:", err);
-});
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error("MongoDB startup failed:", err);
+  });
+}
 
 module.exports = { app, connectDatabase };
