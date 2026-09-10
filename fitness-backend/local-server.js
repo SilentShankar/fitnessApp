@@ -23,6 +23,10 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/workouts", require("./routes/workouts"));
 app.use("/api/programs", require("./routes/programs"));
+app.use("/auth", require("./routes/auth"));
+app.use("/clients", require("./routes/clients"));
+app.use("/workouts", require("./routes/workouts"));
+app.use("/programs", require("./routes/programs"));
 
 const seedDemoUsers = async () => {
   const demoUsers = [
