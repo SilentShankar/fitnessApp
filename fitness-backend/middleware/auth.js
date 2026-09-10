@@ -1,5 +1,9 @@
 const jwt = require("jsonwebtoken");
-const jwtSecret = process.env.JWT_SECRET || "secret";
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret) {
+  throw new Error("JWT_SECRET must be set");
+}
 
 const auth = (req, res, next) => {
   try {

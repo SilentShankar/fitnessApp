@@ -2,7 +2,11 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const jwtSecret = process.env.JWT_SECRET || "secret";
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret) {
+  throw new Error("JWT_SECRET must be set");
+}
 
 const router = express.Router();
 

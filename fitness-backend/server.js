@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 
@@ -11,6 +13,7 @@ const User = require("./models/User");
 const app = express();
 const port = process.env.PORT || 5000;
 const allowedOrigin = process.env.CLIENT_URL || "*";
+const isDemoMode = !process.env.MONGO_URI;
 
 app.use(cors({ origin: allowedOrigin }));
 app.use(express.json());
@@ -156,8 +159,10 @@ const startServer = async () => {
   });
 
   console.log("MongoDB Connected ✅");
-  await seedDemoUsers();
-  await seedDemoClients();
+  if (isDemoMode) {
+    await seedDemoUsers();
+    await seedDemoClients();
+  }
 
   app.listen(port, () => {
     console.log(`Server running on port ${port} 🚀`);
