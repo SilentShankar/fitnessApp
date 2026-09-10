@@ -12,10 +12,9 @@ const User = require("./models/User");
 
 const app = express();
 const port = process.env.PORT || 5000;
-const allowedOrigin = process.env.CLIENT_URL || "*";
 const isDemoMode = !process.env.MONGO_URI;
 
-app.use(cors({ origin: allowedOrigin }));
+app.use(cors());
 app.use(express.json());
 
 // ✅ Routes
