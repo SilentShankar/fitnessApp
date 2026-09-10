@@ -145,7 +145,9 @@ const seedDemoClients = async () => {
   }
 };
 
-const startServer = async () => {
+const connectDatabase = async () => {
+  if (mongoose.connection.readyState === 1) return;
+
   let mongoUri = process.env.MONGO_URI;
 
   if (!mongoUri) {
@@ -163,6 +165,10 @@ const startServer = async () => {
     await seedDemoUsers();
     await seedDemoClients();
   }
+};
+
+const startServer = async () => {
+  await connectDatabase();
 
   app.listen(port, () => {
     console.log(`Server running on port ${port} 🚀`);
@@ -172,3 +178,5 @@ const startServer = async () => {
 startServer().catch((err) => {
   console.error("MongoDB startup failed:", err);
 });
+
+module.exports = { app, connectDatabase };
