@@ -1,11 +1,10 @@
 import Layout from "../components/Layout";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import API from "../api";
 
 function ClientDashboard() {
   const [client, setClient] = useState(undefined);
   const [programs, setPrograms] = useState([]);
-  const [today, setToday] = useState(new Date());
   const [newMessage, setNewMessage] = useState("");
   const [checkin, setCheckin] = useState({
     energy: 8,
@@ -14,7 +13,32 @@ function ClientDashboard() {
     note: "Feeling good after yesterday's recovery session.",
   });
 
+  const fetchClient = useCallback(async () => {
+    try {
+      const res = await API.get("/clients/me");
+      setClient(res.data);
+    } catch (err) {
+      console.error(err);
+      setClient(null);
+    }
+  }, []);
+
+  const fetchPrograms = useCallback(async () => {
+    try {
+      const res = await API.get("/programs/mine");
+      setPrograms(res.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClient();
+    fetchPrograms();
+  }, [fetchClient, fetchPrograms]);
+
   const saveCheckin = async () => {
+    if (!client?._id) return;
     try {
       await API.post(`/clients/${client._id}/checkin`, checkin);
       fetchClient();
@@ -24,7 +48,7 @@ function ClientDashboard() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !client?._id) return;
 
     try {
       await API.post(`/clients/${client._id}/message`, {
@@ -33,23 +57,6 @@ function ClientDashboard() {
       });
       setNewMessage("");
       fetchClient();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchClient();
-    fetchPrograms();
-
-    const timer = setInterval(() => setToday(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const fetchPrograms = async () => {
-    try {
-      const res = await API.get("/programs/mine");
-      setPrograms(res.data || []);
     } catch (err) {
       console.error(err);
     }
@@ -64,17 +71,8 @@ function ClientDashboard() {
     }
   };
 
-  const fetchClient = async () => {
-    try {
-      const res = await API.get("/clients/me");
-      setClient(res.data);
-    } catch (err) {
-      console.error(err);
-      setClient(null);
-    }
-  };
-
   const toggleWorkout = async (wid) => {
+    if (!client?._id) return;
     try {
       await API.put(`/clients/${client._id}/workout/${wid}`);
       fetchClient();
@@ -214,7 +212,7 @@ function ClientDashboard() {
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-800">Your workouts</h2>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
-                {today.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                {new Date().toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
               </span>
             </div>
 

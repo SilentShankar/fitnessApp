@@ -2,6 +2,8 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const auth = require("../middleware/auth");
+const adminOnly = require("../middleware/admin");
 const jwtSecret = process.env.JWT_SECRET;
 
 if (!jwtSecret) {
@@ -87,8 +89,8 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ✅ GET USERS FOR DROPDOWN
-router.get("/users", async (req, res) => {
+// ✅ GET USERS FOR DROPDOWN (Admin only)
+router.get("/users", auth, adminOnly, async (req, res) => {
   try {
     const users = await User.find({}, "name email role");
     res.json(users);

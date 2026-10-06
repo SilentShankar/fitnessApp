@@ -3,22 +3,32 @@ import { useEffect, useState } from "react";
 import { LayoutDashboard, Users, CalendarDays, MessageSquareText, LogOut, Menu, Activity, Clock3, Dumbbell } from "lucide-react";
 import API from "../api";
 
+function LiveClock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+      <Clock3 size={16} className="text-blue-600" />
+      {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+    </div>
+  );
+}
+
 function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const [now, setNow] = useState(new Date());
   const [hasMessageUpdate, setHasMessageUpdate] = useState(false);
   const [messagePopup, setMessagePopup] = useState("");
 
   const user = JSON.parse(localStorage.getItem("user") || "null") || {};
   const name = user?.name || "User";
   const role = user?.role || "client";
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -72,7 +82,7 @@ function Layout({ children }) {
     syncMessages();
     const syncTimer = window.setInterval(syncMessages, 5000);
     return () => window.clearInterval(syncTimer);
-  }, [messageStorageKey, role]);
+  }, [messageStorageKey, messageSignatureKey, role]);
 
   useEffect(() => {
     if (location.pathname === "/messages") {
@@ -169,10 +179,7 @@ function Layout({ children }) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                <Clock3 size={16} className="text-blue-600" />
-                {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </div>
+              <LiveClock />
 
               <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 font-bold text-white">

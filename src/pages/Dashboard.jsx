@@ -1,5 +1,5 @@
 import Layout from "../components/Layout";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
 import {
@@ -24,18 +24,18 @@ function Dashboard() {
     time: 0,
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const res = await API.get("/clients");
       setClients(res.data);
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const totalClients = clients.length;
   const allWorkouts = clients.flatMap((c) => c.workouts || []);
@@ -47,24 +47,44 @@ function Dashboard() {
   const time = (completed * 5) / 60;
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStats((prev) => ({
-        clients: animate(prev.clients, totalClients),
-        workouts: animate(prev.workouts, totalWorkouts),
-        calories: animate(prev.calories, calories),
-        time: animate(prev.time, time),
-      }));
-    }, 30);
+    let timer;
+    const stepAnimation = () => {
+      setStats((prev) => {
+        const nextClients = prev.clients < totalClients
+          ? Math.min(totalClients, prev.clients + Math.ceil((totalClients - prev.clients) / 5))
+          : totalClients;
+        const nextWorkouts = prev.workouts < totalWorkouts
+          ? Math.min(totalWorkouts, prev.workouts + Math.ceil((totalWorkouts - prev.workouts) / 5))
+          : totalWorkouts;
+        const nextCalories = prev.calories < calories
+          ? Math.min(calories, prev.calories + Math.ceil((calories - prev.calories) / 5))
+          : calories;
+        const nextTime = prev.time < time
+          ? Math.min(time, Number((prev.time + Math.max(0.05, (time - prev.time) / 5)).toFixed(2)))
+          : time;
 
-    return () => clearInterval(interval);
+        const isDone =
+          nextClients === totalClients &&
+          nextWorkouts === totalWorkouts &&
+          nextCalories === calories &&
+          nextTime >= time;
+
+        if (!isDone) {
+          timer = setTimeout(stepAnimation, 40);
+        }
+
+        return {
+          clients: nextClients,
+          workouts: nextWorkouts,
+          calories: nextCalories,
+          time: nextTime,
+        };
+      });
+    };
+
+    timer = setTimeout(stepAnimation, 40);
+    return () => clearTimeout(timer);
   }, [totalClients, totalWorkouts, calories, time]);
-
-  const animate = (current, target) => {
-    if (current < target) {
-      return current + Math.ceil((target - current) / 10);
-    }
-    return target;
-  };
 
   const percent = totalWorkouts === 0 ? 0 : Math.round((completed / totalWorkouts) * 100);
 

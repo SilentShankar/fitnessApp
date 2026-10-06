@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Workout = require("../models/Plan");
+const auth = require("../middleware/auth");
+const adminOnly = require("../middleware/admin");
 
-// ✅ Get all workouts
-router.get("/", async (req, res) => {
+// ✅ Get all workouts (authenticated)
+router.get("/", auth, async (req, res) => {
   try {
     const workouts = await Workout.find();
     res.json(workouts);
@@ -12,8 +14,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ Add new workout
-router.post("/", async (req, res) => {
+// ✅ Add new workout (Admin only)
+router.post("/", auth, adminOnly, async (req, res) => {
   try {
     const { name } = req.body;
 

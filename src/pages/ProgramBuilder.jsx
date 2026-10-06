@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import API from "../api";
 
@@ -13,11 +13,7 @@ function ProgramBuilder() {
   const [exerciseDraft, setExerciseDraft] = useState(emptyExercise);
   const [status, setStatus] = useState("");
 
-  useEffect(() => {
-    loadBuilderData();
-  }, []);
-
-  const loadBuilderData = async () => {
+  const loadBuilderData = useCallback(async () => {
     try {
       const [clientsResponse, libraryResponse, programsResponse] = await Promise.all([
         API.get("/clients"),
@@ -27,13 +23,20 @@ function ProgramBuilder() {
       setClients(clientsResponse.data);
       setLibrary(libraryResponse.data);
       setPrograms(programsResponse.data);
-      if (clientsResponse.data[0]) {
-        setForm((current) => ({ ...current, assignedTo: clientsResponse.data[0].userId }));
+      if (clientsResponse.data[0]?.userId) {
+        setForm((current) => ({
+          ...current,
+          assignedTo: current.assignedTo || clientsResponse.data[0].userId,
+        }));
       }
     } catch (err) {
       setStatus(err.response?.data?.msg || "Unable to load program builder");
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadBuilderData();
+  }, [loadBuilderData]);
 
   const addExercise = () => {
     if (!exerciseDraft.name.trim()) return;

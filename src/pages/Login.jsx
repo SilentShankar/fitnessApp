@@ -1,32 +1,38 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
+import { LogIn, AlertCircle } from "lucide-react";
 
 const demoAccounts = [
   {
     label: "Admin demo",
     email: "admin@forgefit.com",
     password: "admin123",
+    roleText: "Coaching & Management",
   },
   {
     label: "Client demo",
     email: "client@forgefit.com",
     password: "client123",
+    roleText: "Athlete & Trainee",
   },
 ];
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const performLogin = async (loginEmail, loginPassword) => {
+    setError("");
+    setIsLoading(true);
 
     try {
       const res = await API.post("/auth/login", {
-        email,
-        password,
+        email: loginEmail,
+        password: loginPassword,
       });
 
       localStorage.setItem("token", res.data.token);
@@ -38,8 +44,26 @@ function Login() {
         navigate("/client-dashboard");
       }
     } catch (err) {
-      alert(err.response?.data?.msg || "Login failed ❌");
+      setError(err.response?.data?.msg || "Login failed. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+    performLogin(email, password);
+  };
+
+  const handleSelectDemo = (demo) => {
+    setEmail(demo.email);
+    setPassword(demo.password);
+    setError("");
+    performLogin(demo.email, demo.password);
   };
 
   return (
@@ -65,26 +89,39 @@ function Login() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center bg-white/90 p-8">
+        <div className="flex items-center justify-center bg-white/95 p-8">
           <form onSubmit={handleLogin} className="w-full max-w-md">
-            <div className="mb-8 text-center">
+            <div className="mb-6 text-center">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Welcome back</p>
               <h2 className="mt-2 text-3xl font-black text-slate-900">Sign in</h2>
             </div>
 
-            <div className="mb-5 grid gap-3 sm:grid-cols-2">
-              {demoAccounts.map((demo) => (
-                <div
-                  key={demo.email}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left"
-                >
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-700">{demo.label}</span>
-                  </div>
-                  <p className="mt-2 truncate text-xs text-slate-500">{demo.email}</p>
-                  <p className="mt-1 text-xs text-slate-500">Password: <span className="font-semibold text-slate-700">{demo.password}</span></p>
-                </div>
-              ))}
+            {error && (
+              <div className="mb-4 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-600">
+                <AlertCircle size={18} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="mb-5">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Quick demo access</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {demoAccounts.map((demo) => (
+                  <button
+                    key={demo.email}
+                    type="button"
+                    onClick={() => handleSelectDemo(demo)}
+                    className="group rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-400 hover:bg-blue-50/60"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-700 group-hover:text-blue-700">{demo.label}</span>
+                      <span className="text-[10px] font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition">Login →</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{demo.roleText}</p>
+                    <p className="mt-1 font-mono text-[11px] text-slate-400 truncate">{demo.email}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -94,6 +131,7 @@ function Login() {
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
 
               <input
@@ -102,16 +140,31 @@ function Login() {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
 
-              <button type="submit" className="primary-button w-full">
-                Login
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="primary-button w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Signing in...
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <LogIn size={18} />
+                    Login
+                  </span>
+                )}
               </button>
             </div>
 
             <p className="mt-6 text-center text-sm text-slate-600">
               Don’t have an account?{" "}
-              <span onClick={() => navigate("/signup")} className="cursor-pointer font-semibold text-blue-600">
+              <span onClick={() => navigate("/signup")} className="cursor-pointer font-semibold text-blue-600 hover:underline">
                 Sign up
               </span>
             </p>

@@ -12,7 +12,8 @@ const User = require("./models/User");
 
 const app = express();
 const port = process.env.PORT || 5000;
-const isDemoMode = !process.env.MONGO_URI;
+const isPlaceholderUri = (uri) => !uri || uri.includes("your_mongodb_connection_string") || uri.includes("<username>");
+const isDemoMode = isPlaceholderUri(process.env.MONGO_URI);
 
 app.use(cors());
 app.use(express.json());
@@ -153,10 +154,10 @@ const connectDatabase = async () => {
 
   let mongoUri = process.env.MONGO_URI;
 
-  if (!mongoUri) {
+  if (isDemoMode) {
     const mongoServer = await MongoMemoryServer.create();
     mongoUri = mongoServer.getUri();
-    console.log("Using temporary demo database");
+    console.log("Using temporary in-memory demo database");
   }
 
   await mongoose.connect(mongoUri, {

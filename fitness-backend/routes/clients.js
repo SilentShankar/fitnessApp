@@ -98,6 +98,10 @@ router.post("/:id/checkin", auth, async (req, res) => {
       return res.status(404).json({ msg: "Client not found" });
     }
 
+    if (!canAccessClient(req, client)) {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
     client.checkIns.push({ energy, sleep, mood, note });
     await client.save();
     res.json(client);
@@ -162,6 +166,10 @@ router.post("/:id/session", auth, async (req, res) => {
 
     if (!client) {
       return res.status(404).json({ msg: "Client not found" });
+    }
+
+    if (!canAccessClient(req, client)) {
+      return res.status(403).json({ msg: "Access denied" });
     }
 
     client.sessions.push({
@@ -236,8 +244,12 @@ router.post("/:id/note", auth, async (req, res) => {
   }
 });
 
-// ✅ DELETE CLIENT
+// ✅ DELETE CLIENT (Admin only)
 router.delete("/:id", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
   try {
     const deleted = await Client.findByIdAndDelete(req.params.id);
 
@@ -252,11 +264,15 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
-// ✅ MULTI DELETE (IMPORTANT: ABOVE SINGLE DELETE)
+// ✅ MULTI DELETE (Admin only)
 router.post("/:id/workout/delete-many", auth, async (req, res) => {
-  const { ids } = req.body;
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
 
+  const { ids } = req.body;
   const client = await Client.findById(req.params.id);
+  if (!client) return res.status(404).json({ msg: "Client not found" });
 
   client.workouts = client.workouts.filter(
     w => !ids.includes(w._id.toString())
@@ -266,9 +282,14 @@ router.post("/:id/workout/delete-many", auth, async (req, res) => {
   res.json(client);
 });
 
-// ✅ SINGLE DELETE
+// ✅ SINGLE DELETE (Admin only)
 router.delete("/:id/workout/:wid", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
   const client = await Client.findById(req.params.id);
+  if (!client) return res.status(404).json({ msg: "Client not found" });
 
   client.workouts = client.workouts.filter(
     w => w._id.toString() !== req.params.wid
@@ -278,11 +299,15 @@ router.delete("/:id/workout/:wid", auth, async (req, res) => {
   res.json(client);
 });
 
-// ✅ ADD WORKOUT
+// ✅ ADD WORKOUT (Admin only)
 router.post("/:id/workout", auth, async (req, res) => {
-  const { name } = req.body;
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
 
+  const { name } = req.body;
   const client = await Client.findById(req.params.id);
+  if (!client) return res.status(404).json({ msg: "Client not found" });
 
   const exists = client.workouts.find(w => w.name === name);
   if (exists) {
@@ -298,8 +323,15 @@ router.post("/:id/workout", auth, async (req, res) => {
 // ✅ TOGGLE DONE
 router.put("/:id/workout/:wid", auth, async (req, res) => {
   const client = await Client.findById(req.params.id);
+  if (!client) return res.status(404).json({ msg: "Client not found" });
+
+  if (!canAccessClient(req, client)) {
+    return res.status(403).json({ msg: "Access denied" });
+  }
 
   const workout = client.workouts.id(req.params.wid);
+  if (!workout) return res.status(404).json({ msg: "Workout not found" });
+
   workout.done = !workout.done;
 
   await client.save();

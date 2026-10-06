@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Layout from "../components/Layout";
 import API from "../api";
 import { getUser } from "../utils/auth";
@@ -11,25 +11,19 @@ function Messages() {
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const isClient = getUser()?.role === "client";
 
-  useEffect(() => {
-    if (isClient) {
-      fetchClientProfile();
-    } else {
-      fetchClients();
+  const fetchMessages = useCallback(async (clientId) => {
+    if (!clientId) return;
+    try {
+      const res = await API.get(`/clients/${clientId}/messages`);
+      setMessages(res.data || []);
+      setLastSyncedAt(new Date());
+    } catch (err) {
+      console.error(err);
+      setMessages([]);
     }
   }, []);
 
-  useEffect(() => {
-    if (!selectedClientId) return undefined;
-
-    const syncTimer = setInterval(() => {
-      fetchMessages(selectedClientId);
-    }, 5000);
-
-    return () => clearInterval(syncTimer);
-  }, [selectedClientId]);
-
-  const fetchClientProfile = async () => {
+  const fetchClientProfile = useCallback(async () => {
     try {
       const res = await API.get("/clients/me");
       setClients([res.data]);
@@ -38,9 +32,9 @@ function Messages() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [fetchMessages]);
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async () => {
     try {
       const res = await API.get("/clients");
       setClients(res.data);
@@ -51,18 +45,25 @@ function Messages() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [fetchMessages]);
 
-  const fetchMessages = async (clientId) => {
-    try {
-      const res = await API.get(`/clients/${clientId}/messages`);
-      setMessages(res.data || []);
-      setLastSyncedAt(new Date());
-    } catch (err) {
-      console.error(err);
-      setMessages([]);
+  useEffect(() => {
+    if (isClient) {
+      fetchClientProfile();
+    } else {
+      fetchClients();
     }
-  };
+  }, [isClient, fetchClientProfile, fetchClients]);
+
+  useEffect(() => {
+    if (!selectedClientId) return undefined;
+
+    const syncTimer = setInterval(() => {
+      fetchMessages(selectedClientId);
+    }, 5000);
+
+    return () => clearInterval(syncTimer);
+  }, [selectedClientId, fetchMessages]);
 
   const handleClientChange = (clientId) => {
     setSelectedClientId(clientId);
