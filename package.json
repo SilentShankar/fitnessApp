@@ -1,10 +1,13 @@
 {
-  "name": "vite-project",
+  "name": "forgefit-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
+    "dev:backend": "node fitness-backend/local-server.js",
+    "dev:all": "concurrently -n \"API,WEB\" -c \"magenta,cyan\" \"npm run dev:backend\" \"npm run dev\"",
+    "start": "npm run dev:all",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -23,6 +26,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
+    "concurrently": "^10.0.6",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

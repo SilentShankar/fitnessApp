@@ -94,4 +94,25 @@ router.put("/:id/exercise/:exerciseId", auth, async (req, res) => {
   }
 });
 
+router.delete("/:id", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
+  try {
+    const program = await Program.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user.id,
+    });
+
+    if (!program) {
+      return res.status(404).json({ msg: "Program not found" });
+    }
+
+    res.json({ msg: "Program deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ msg: "Error deleting program" });
+  }
+});
+
 module.exports = router;

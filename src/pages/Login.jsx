@@ -1,28 +1,32 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import API from "../api";
-import { LogIn, AlertCircle } from "lucide-react";
+import { LogIn, AlertCircle, Mail, Lock, Eye, EyeOff, ArrowLeft, Shield, User, Sparkles } from "lucide-react";
 
 const demoAccounts = [
   {
-    label: "Admin demo",
+    label: "Admin Demo",
     email: "admin@forgefit.com",
     password: "admin123",
-    roleText: "Coaching & Management",
+    roleText: "Coach & Studio Admin",
+    badgeColor: "bg-blue-100 text-blue-700 border-blue-200",
   },
   {
-    label: "Client demo",
+    label: "Athlete Demo",
     email: "client@forgefit.com",
     password: "client123",
-    roleText: "Athlete & Trainee",
+    roleText: "Trainee Portal & Logging",
+    badgeColor: "bg-emerald-100 text-emerald-700 border-emerald-200",
   },
 ];
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeDemo, setActiveDemo] = useState("");
   const navigate = useNavigate();
 
   const performLogin = async (loginEmail, loginPassword) => {
@@ -47,6 +51,7 @@ function Login() {
       setError(err.response?.data?.msg || "Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
+      setActiveDemo("");
     }
   };
 
@@ -60,6 +65,7 @@ function Login() {
   };
 
   const handleSelectDemo = (demo) => {
+    setActiveDemo(demo.email);
     setEmail(demo.email);
     setPassword(demo.password);
     setError("");
@@ -67,86 +73,160 @@ function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-900 p-6">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-white/10 bg-white/5 shadow-[0_30px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl md:grid-cols-2">
-        <div className="flex flex-col justify-between bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 p-8 text-white">
-          <div>
-            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-100">
-              ForgeFit
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-950 p-4 sm:p-6 antialiased">
+      {/* Background ambient lighting */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-blue-600/20 blur-[130px]" />
+        <div className="absolute bottom-1/4 right-1/4 h-[450px] w-[450px] rounded-full bg-indigo-600/15 blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 grid w-full max-w-5xl overflow-hidden rounded-[32px] border border-white/10 bg-slate-900/60 shadow-[0_30px_90px_rgba(0,0,0,0.5)] backdrop-blur-2xl md:grid-cols-2">
+        {/* Left Side Presentation Panel */}
+        <div className="relative flex flex-col justify-between overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-900 p-8 sm:p-12 text-white">
+          <div className="relative z-10">
+            <Link
+              to="/home"
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1 text-xs font-semibold text-white backdrop-blur-sm transition hover:bg-white/20"
+            >
+              <ArrowLeft size={13} />
+              Back to Home
+            </Link>
+
+            <div className="mt-8 flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-blue-700 font-black text-xl shadow-lg">
+                F
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-blue-200">ForgeFit OS</span>
+                <span className="text-xl font-black text-white">Performance Studio</span>
+              </div>
             </div>
-            <h1 className="mt-8 text-4xl font-black leading-tight">Train smarter. Perform stronger.</h1>
+
+            <h1 className="mt-8 text-3xl sm:text-4xl font-black leading-tight tracking-tight">
+              Train with purpose. Coach with clarity.
+            </h1>
+
+            <p className="mt-4 text-sm text-blue-100/90 leading-relaxed font-normal">
+              Access your real-time athlete roster, assigned training programs, and live recovery analytics from one synchronized cockpit.
+            </p>
           </div>
 
-          <div className="mt-10 space-y-4 text-sky-50">
-            <div className="rounded-2xl border border-white/15 bg-white/10 p-4">
-              <p className="text-sm uppercase tracking-[0.2em] text-sky-100">Live metrics</p>
-              <p className="mt-2 text-2xl font-bold">92% goal completion</p>
+          <div className="relative z-10 mt-10 space-y-3">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+              <div className="flex items-center justify-between text-xs text-blue-100">
+                <span>Synchronized Roster</span>
+                <span className="font-bold text-emerald-300">● Live Connection</span>
+              </div>
+              <p className="mt-2 text-xl font-bold">94.2% Athlete Adherence</p>
             </div>
-            <div className="flex gap-4 text-sm">
-              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">+18% energy</div>
-              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">4.8 rating</div>
+
+            <div className="flex gap-3 text-xs">
+              <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3">
+                <span className="text-blue-200 block text-[10px] uppercase font-semibold">Security</span>
+                <span className="font-bold text-white">JWT Encrypted</span>
+              </div>
+              <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3">
+                <span className="text-blue-200 block text-[10px] uppercase font-semibold">Database</span>
+                <span className="font-bold text-white">In-Memory Sync</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-center bg-white/95 p-8">
-          <form onSubmit={handleLogin} className="w-full max-w-md">
-            <div className="mb-6 text-center">
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600">Welcome back</p>
-              <h2 className="mt-2 text-3xl font-black text-slate-900">Sign in</h2>
+        {/* Right Side Form Panel */}
+        <div className="flex flex-col justify-center bg-white p-8 sm:p-12">
+          <form onSubmit={handleLogin} className="w-full max-w-md mx-auto">
+            <div className="mb-6">
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Secure Access</span>
+              <h2 className="mt-1 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Welcome back</h2>
+              <p className="mt-1 text-sm text-slate-500">Sign in to your ForgeFit account or pick a demo role.</p>
             </div>
 
             {error && (
-              <div className="mb-4 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-600">
-                <AlertCircle size={18} className="shrink-0" />
+              <div className="mb-5 flex items-start gap-2.5 rounded-2xl border border-red-200 bg-red-50 p-3.5 text-xs font-semibold text-red-600 animate-fade-in">
+                <AlertCircle size={17} className="shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">Quick demo access</p>
-              <div className="grid gap-3 sm:grid-cols-2">
+            {/* Quick Demo Access Bar */}
+            <div className="mb-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-3.5">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Sparkles size={14} className="text-blue-600" />
+                <span className="text-xs font-bold text-slate-700">One-Click Demo Access</span>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
                 {demoAccounts.map((demo) => (
                   <button
                     key={demo.email}
                     type="button"
+                    disabled={isLoading}
                     onClick={() => handleSelectDemo(demo)}
-                    className="group rounded-2xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-400 hover:bg-blue-50/60"
+                    className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 ${
+                      activeDemo === demo.email
+                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20"
+                        : "border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm"
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-700 group-hover:text-blue-700">{demo.label}</span>
-                      <span className="text-[10px] font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition">Login →</span>
+                      <span className="text-xs font-bold text-slate-800">{demo.label}</span>
+                      <span className="text-[10px] font-bold text-blue-600 group-hover:translate-x-0.5 transition-transform">
+                        {activeDemo === demo.email ? "Signing in..." : "Login →"}
+                      </span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{demo.roleText}</p>
-                    <p className="mt-1 font-mono text-[11px] text-slate-400 truncate">{demo.email}</p>
+                    <span className="mt-0.5 block text-[11px] text-slate-500 leading-tight">{demo.roleText}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="space-y-4">
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white"
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="email"
+                    placeholder="you@forgefit.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="input-field pl-10"
+                  />
+                </div>
+              </div>
 
-              <input
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white"
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="input-field pl-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="primary-button w-full py-3.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="primary-button w-full py-3 mt-2"
               >
                 {isLoading ? (
                   <span className="inline-flex items-center gap-2">
@@ -156,17 +236,17 @@ function Login() {
                 ) : (
                   <span className="inline-flex items-center gap-2">
                     <LogIn size={18} />
-                    Login
+                    Sign in to Account
                   </span>
                 )}
               </button>
             </div>
 
-            <p className="mt-6 text-center text-sm text-slate-600">
-              Don’t have an account?{" "}
-              <span onClick={() => navigate("/signup")} className="cursor-pointer font-semibold text-blue-600 hover:underline">
-                Sign up
-              </span>
+            <p className="mt-6 text-center text-xs text-slate-600">
+              Don't have an account?{" "}
+              <Link to="/signup" className="font-bold text-blue-600 hover:text-blue-700 hover:underline">
+                Create one now
+              </Link>
             </p>
           </form>
         </div>

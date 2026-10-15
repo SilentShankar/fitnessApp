@@ -218,6 +218,29 @@ router.put("/:id/session/:sid", auth, async (req, res) => {
   }
 });
 
+// ✅ DELETE SESSION (Admin only)
+router.delete("/:id/session/:sid", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ msg: "Client not found" });
+    }
+
+    client.sessions = client.sessions.filter(
+      (s) => s._id.toString() !== req.params.sid
+    );
+
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error deleting session" });
+  }
+});
+
 // ✅ ADD COACH NOTE
 router.post("/:id/note", auth, async (req, res) => {
   if (req.user.role !== "admin") {
@@ -241,6 +264,52 @@ router.post("/:id/note", auth, async (req, res) => {
     res.json(client);
   } catch (err) {
     res.status(500).json({ msg: "Error adding note" });
+  }
+});
+
+// ✅ DELETE COACH NOTE (Admin only)
+router.delete("/:id/note/:nid", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ msg: "Client not found" });
+    }
+
+    client.notes = client.notes.filter(
+      (n) => n._id.toString() !== req.params.nid
+    );
+
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error deleting note" });
+  }
+});
+
+// ✅ UPDATE CLIENT DETAILS (Admin only)
+router.patch("/:id", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
+  try {
+    const { goal, name } = req.body;
+    const client = await Client.findById(req.params.id);
+    if (!client) {
+      return res.status(404).json({ msg: "Client not found" });
+    }
+
+    if (goal !== undefined) client.goal = goal;
+    if (name !== undefined) client.name = name;
+
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error updating client details" });
   }
 });
 
@@ -336,6 +405,124 @@ router.put("/:id/workout/:wid", auth, async (req, res) => {
 
   await client.save();
   res.json(client);
+});
+
+// ✅ UPDATE NUTRITION TARGETS (Admin only)
+router.post("/:id/nutrition-target", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ msg: "Client not found" });
+
+    const { calories, protein, carbs, fats, water, steps } = req.body;
+    client.nutritionTargets = {
+      calories: Number(calories) || client.nutritionTargets?.calories || 2400,
+      protein: Number(protein) || client.nutritionTargets?.protein || 180,
+      carbs: Number(carbs) || client.nutritionTargets?.carbs || 250,
+      fats: Number(fats) || client.nutritionTargets?.fats || 70,
+      water: Number(water) || client.nutritionTargets?.water || 3500,
+      steps: Number(steps) || client.nutritionTargets?.steps || 10000,
+    };
+
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error updating nutrition targets" });
+  }
+});
+
+// ✅ LOG DAILY NUTRITION / MACROS (Athlete or Coach)
+router.post("/:id/nutrition-log", auth, async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ msg: "Client not found" });
+
+    if (!canAccessClient(req, client)) {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
+    const { date, calories, protein, carbs, fats, water, steps, notes } = req.body;
+    const logDate = date || new Date().toISOString().slice(0, 10);
+
+    const existingIndex = client.nutritionLogs.findIndex((log) => log.date === logDate);
+    if (existingIndex > -1) {
+      if (calories !== undefined) client.nutritionLogs[existingIndex].calories = Number(calories);
+      if (protein !== undefined) client.nutritionLogs[existingIndex].protein = Number(protein);
+      if (carbs !== undefined) client.nutritionLogs[existingIndex].carbs = Number(carbs);
+      if (fats !== undefined) client.nutritionLogs[existingIndex].fats = Number(fats);
+      if (water !== undefined) client.nutritionLogs[existingIndex].water = Number(water);
+      if (steps !== undefined) client.nutritionLogs[existingIndex].steps = Number(steps);
+      if (notes !== undefined) client.nutritionLogs[existingIndex].notes = notes;
+    } else {
+      client.nutritionLogs.push({
+        date: logDate,
+        calories: Number(calories) || 0,
+        protein: Number(protein) || 0,
+        carbs: Number(carbs) || 0,
+        fats: Number(fats) || 0,
+        water: Number(water) || 0,
+        steps: Number(steps) || 0,
+        notes: notes || "",
+      });
+    }
+
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error saving nutrition log" });
+  }
+});
+
+// ✅ LOG BODY WEIGHT & MEASUREMENTS (Athlete or Coach)
+router.post("/:id/metric", auth, async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ msg: "Client not found" });
+
+    if (!canAccessClient(req, client)) {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
+    const { date, weight, bodyFat, waist, chest, notes } = req.body;
+    if (!weight) {
+      return res.status(400).json({ msg: "Body weight is required" });
+    }
+
+    client.bodyMetrics.push({
+      date: date || new Date().toISOString().slice(0, 10),
+      weight: Number(weight),
+      bodyFat: bodyFat ? Number(bodyFat) : null,
+      waist: waist ? Number(waist) : null,
+      chest: chest ? Number(chest) : null,
+      notes: notes || "",
+    });
+
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error saving metric" });
+  }
+});
+
+// ✅ DELETE BODY METRIC (Admin or Athlete)
+router.delete("/:id/metric/:mid", auth, async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ msg: "Client not found" });
+
+    if (!canAccessClient(req, client)) {
+      return res.status(403).json({ msg: "Access denied" });
+    }
+
+    client.bodyMetrics = client.bodyMetrics.filter((m) => m._id.toString() !== req.params.mid);
+    await client.save();
+    res.json(client);
+  } catch (err) {
+    res.status(500).json({ msg: "Error deleting metric" });
+  }
 });
 
 module.exports = router;

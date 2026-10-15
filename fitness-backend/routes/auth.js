@@ -4,11 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 const adminOnly = require("../middleware/admin");
-const jwtSecret = process.env.JWT_SECRET;
-
-if (!jwtSecret) {
-  throw new Error("JWT_SECRET must be set");
-}
+const jwtSecret = process.env.JWT_SECRET || "forgefit-default-dev-secret-key-change-in-production";
 
 const router = express.Router();
 
@@ -32,6 +28,22 @@ router.post("/signup", async (req, res) => {
     });
 
     await user.save();
+
+    if (user.role === "client") {
+      const Client = require("../models/Client");
+      await Client.create({
+        name: user.name,
+        userId: user._id,
+        workouts: [
+          { name: "Warm-up activation & mobility", done: false },
+          { name: "Full-body foundation circuit", done: false },
+          { name: "Post-session cooldown & stretch", done: false },
+        ],
+        notes: [
+          { text: "Welcome to ForgeFit! Your training journey begins today." },
+        ],
+      });
+    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

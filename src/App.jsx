@@ -11,6 +11,7 @@ const ClientDashboard = lazy(() => import("./pages/ClientDashboard"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const Messages = lazy(() => import("./pages/Messages"));
 const ProgramBuilder = lazy(() => import("./pages/ProgramBuilder"));
+const Nutrition = lazy(() => import("./pages/Nutrition"));
 
 function PageLoader() {
   return (
@@ -74,6 +75,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["admin", "client"]}>
               <Messages />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/nutrition"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "client"]}>
+              <Nutrition />
             </ProtectedRoute>
           }
         />

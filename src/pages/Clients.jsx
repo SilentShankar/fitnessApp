@@ -1,6 +1,22 @@
 import Layout from "../components/Layout";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { CheckCircle2, Dumbbell, Plus, Search, StickyNote, Trash2, Users, AlertCircle, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  CheckCircle2,
+  Dumbbell,
+  Plus,
+  Search,
+  StickyNote,
+  Trash2,
+  Users,
+  AlertCircle,
+  X,
+  Filter,
+  Check,
+  ChevronRight,
+  Sparkles,
+  Layers,
+  Flame,
+} from "lucide-react";
 import API from "../api";
 
 function Clients() {
@@ -17,6 +33,11 @@ function Clients() {
   const [toast, setToast] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
+
+  // New UI enhancement states
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [workoutFilterTab, setWorkoutFilterTab] = useState("all"); // 'all' | 'pending' | 'completed'
+  const [dragOverClientId, setDragOverClientId] = useState(null);
 
   const dropdownRef = useRef(null);
 
@@ -90,6 +111,14 @@ function Clients() {
     u.email.toLowerCase().includes(searchUser.toLowerCase())
   );
 
+  // Filtered workout templates in library
+  const filteredLibrary = useMemo(() => {
+    if (!librarySearch.trim()) return workouts;
+    return workouts.filter((w) =>
+      w.name.toLowerCase().includes(librarySearch.toLowerCase())
+    );
+  }, [workouts, librarySearch]);
+
   // ADD CLIENT
   const addClient = async () => {
     if (!selectedUser) {
@@ -104,9 +133,9 @@ function Clients() {
       setSearchUser("");
       setShowDropdown(false);
       await fetchClients();
-      showToast("Client added successfully ✅");
+      showToast("Athlete added successfully ✅");
     } catch (err) {
-      showToast(err.response?.data?.msg || "Failed to add client");
+      showToast(err.response?.data?.msg || "Failed to add athlete");
     } finally {
       setIsSubmitting(false);
     }
@@ -124,13 +153,13 @@ function Clients() {
       setSelectedWorkouts([]);
       setClientToDelete(null);
       await fetchClients();
-      showToast("Client removed 🗑️");
+      showToast("Client removed from roster 🗑️");
     } catch {
       showToast("Error deleting client");
     }
   };
 
-  // ADD GLOBAL WORKOUT
+  // ADD GLOBAL WORKOUT TEMPLATE
   const addWorkout = async () => {
     if (!newWorkout.trim()) return;
 
@@ -138,16 +167,16 @@ function Clients() {
       await API.post("/workouts", { name: newWorkout.trim() });
       setNewWorkout("");
       await fetchWorkouts();
-      showToast("Workout template added 💪");
+      showToast("Exercise template saved to library 💪");
     } catch {
       showToast("Error adding workout template");
     }
   };
 
-  // ASSIGN WORKOUT (Supports targetClientId for drag-and-drop onto specific client)
+  // ASSIGN WORKOUT
   const assignWorkout = async (name, targetClientId = selectedClient?._id) => {
     if (!targetClientId) {
-      showToast("Select a client first or drag onto a client");
+      showToast("Select a client first or drag onto an athlete card");
       return;
     }
 
@@ -162,7 +191,7 @@ function Clients() {
 
   const addCoachNote = async () => {
     if (!selectedClient || !newNote.trim()) {
-      showToast("Select a client and write a note first");
+      showToast("Select an athlete and write a note first");
       return;
     }
 
@@ -170,13 +199,24 @@ function Clients() {
       await API.post(`/clients/${selectedClient._id}/note`, { text: newNote.trim() });
       setNewNote("");
       await fetchClients();
-      showToast("Coach note saved");
+      showToast("Coach note saved ✅");
     } catch (err) {
       showToast(err.response?.data?.msg || "Error adding note");
     }
   };
 
-  // DELETE SINGLE
+  const deleteCoachNote = async (nid) => {
+    if (!selectedClient) return;
+    try {
+      await API.delete(`/clients/${selectedClient._id}/note/${nid}`);
+      await fetchClients();
+      showToast("Coach note removed 🗑️");
+    } catch {
+      showToast("Error deleting note");
+    }
+  };
+
+  // DELETE SINGLE WORKOUT
   const deleteWorkout = async (wid) => {
     try {
       await API.delete(`/clients/${selectedClient._id}/workout/${wid}`);
@@ -188,7 +228,7 @@ function Clients() {
     }
   };
 
-  // MULTI DELETE
+  // MULTI DELETE WORKOUTS
   const deleteMultiple = async () => {
     if (!selectedWorkouts.length || !selectedClient) return;
 
@@ -199,7 +239,7 @@ function Clients() {
 
       setSelectedWorkouts([]);
       await fetchClients();
-      showToast("Deleted selected workouts");
+      showToast(`Deleted ${selectedWorkouts.length} workouts`);
     } catch {
       showToast("Error deleting selected workouts");
     }
@@ -213,108 +253,140 @@ function Clients() {
     );
   };
 
-  const toggleSelectAllWorkouts = () => {
-    if (!selectedClient?.workouts?.length) return;
-    if (selectedWorkouts.length === selectedClient.workouts.length) {
-      setSelectedWorkouts([]);
+  const toggleSelectAllWorkouts = (workoutsToToggle) => {
+    if (!workoutsToToggle.length) return;
+    const allIds = workoutsToToggle.map((w) => w._id);
+    const allSelected = allIds.every((id) => selectedWorkouts.includes(id));
+
+    if (allSelected) {
+      setSelectedWorkouts((prev) => prev.filter((id) => !allIds.includes(id)));
     } else {
-      setSelectedWorkouts(selectedClient.workouts.map((w) => w._id));
+      setSelectedWorkouts((prev) => Array.from(new Set([...prev, ...allIds])));
     }
   };
+
+  // Filter client's assigned workouts
+  const visibleWorkouts = useMemo(() => {
+    if (!selectedClient?.workouts) return [];
+    if (workoutFilterTab === "pending") return selectedClient.workouts.filter((w) => !w.done);
+    if (workoutFilterTab === "completed") return selectedClient.workouts.filter((w) => w.done);
+    return selectedClient.workouts;
+  }, [selectedClient, workoutFilterTab]);
 
   return (
     <Layout>
       <div className="mx-auto max-w-7xl space-y-6">
-
-        {/* TOAST NOTIFICATION */}
+        {/* Floating Toast Notification */}
         {toast && (
-          <div className="fixed right-6 top-6 z-[100] flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl animate-fade-in">
+          <div className="fixed right-6 top-6 z-[100] flex items-center gap-2 rounded-2xl bg-slate-900/95 px-4 py-3 text-sm font-semibold text-white shadow-xl backdrop-blur-md animate-fade-in border border-white/10">
             <CheckCircle2 size={16} className="text-emerald-400" />
             {toast}
           </div>
         )}
 
-        {/* CONFIRM DELETE MODAL */}
+        {/* Delete Confirmation Modal */}
         {clientToDelete && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-fade-in">
             <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 shadow-2xl">
               <div className="flex items-center gap-3 text-red-600">
-                <AlertCircle size={24} />
-                <h3 className="text-lg font-bold text-slate-900">Remove Client</h3>
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-100">
+                  <AlertCircle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Remove Athlete</h3>
+                  <p className="text-xs text-slate-500">Irreversible action</p>
+                </div>
               </div>
-              <p className="mt-3 text-sm text-slate-600">
-                Are you sure you want to remove <strong className="text-slate-900">{clientToDelete.name}</strong>? All assigned workouts, notes, and session schedules for this client will be deleted.
+
+              <p className="mt-4 text-sm text-slate-600 leading-relaxed">
+                Are you sure you want to remove <strong className="text-slate-900">{clientToDelete.name}</strong>?
+                All assigned workouts, coaching notes, and appointment schedules will be deleted.
               </p>
+
               <div className="mt-6 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setClientToDelete(null)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={confirmDeleteClient}
-                  className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/20 hover:bg-red-700"
+                  className="rounded-xl bg-red-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-red-500/20 hover:bg-red-700 transition"
                 >
-                  Delete Client
+                  Delete Athlete
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        <section className="rounded-[28px] bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 p-6 text-white shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        {/* Page Banner */}
+        <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 p-6 sm:p-8 text-white shadow-xl border border-white/10">
+          <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-200">Client operations</p>
-              <h1 className="mt-2 text-3xl font-black">Manage your clients</h1>
-              <p className="mt-2 text-sm text-slate-300">Assign workouts, write coaching notes, and keep every athlete moving forward.</p>
+              <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-300">
+                Roster Operations
+              </span>
+              <h1 className="mt-2 text-2xl sm:text-3xl font-black tracking-tight text-white">
+                Athlete & Workout Studio
+              </h1>
+              <p className="mt-1 text-sm text-slate-300">
+                Assign exercises, curate template libraries, and track individual athlete progress.
+              </p>
             </div>
-            <div className="flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1.5 text-sm text-emerald-100">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
-              {clients.length} active clients
+
+            <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span>{clients.length} Active Athletes</span>
             </div>
           </div>
         </section>
 
+        {/* Summary Metric Counters */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="glass-panel rounded-2xl p-4">
-            <p className="text-sm text-slate-500">Clients</p>
+          <div className="glass-panel rounded-2xl p-4 card-hover-lift">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Athletes</span>
             <p className="mt-1 text-2xl font-black text-slate-900">{clients.length}</p>
           </div>
-          <div className="glass-panel rounded-2xl p-4">
-            <p className="text-sm text-slate-500">Library exercises</p>
-            <p className="mt-1 text-2xl font-black text-blue-700">{workouts.length}</p>
+          <div className="glass-panel rounded-2xl p-4 card-hover-lift">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Exercise Templates</span>
+            <p className="mt-1 text-2xl font-black text-blue-600">{workouts.length}</p>
           </div>
-          <div className="glass-panel rounded-2xl p-4">
-            <p className="text-sm text-slate-500">Assigned workouts</p>
+          <div className="glass-panel rounded-2xl p-4 card-hover-lift">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Assigned Workouts</span>
             <p className="mt-1 text-2xl font-black text-emerald-600">
               {clients.reduce((count, client) => count + (client.workouts || []).length, 0)}
             </p>
           </div>
         </div>
 
-        <div className="glass-panel rounded-[28px] p-5">
+        {/* Enroll Athlete Account Card */}
+        <div className="glass-panel rounded-[28px] p-6">
           <div className="mb-3 flex items-center gap-2">
             <Users size={18} className="text-blue-600" />
-            <h2 className="font-bold text-slate-800">Add a client account</h2>
+            <h2 className="font-bold text-slate-800 text-base">Enroll Athlete Account</h2>
           </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Search for registered user accounts to assign them to your active coaching roster.
+          </p>
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
             <div ref={dropdownRef} className="relative w-full max-w-md">
-              <Search size={17} className="pointer-events-none absolute left-3 top-3.5 text-slate-400" />
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-3.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search available client accounts..."
+                placeholder="Search registered athletes..."
                 value={searchUser}
                 onChange={(e) => setSearchUser(e.target.value)}
                 onFocus={() => setShowDropdown(true)}
-                className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-10 pr-3 text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="input-field pl-10"
               />
 
               {showDropdown && filteredUsers.length > 0 && (
-                <div className="mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                <div className="absolute left-0 right-0 z-30 mt-2 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
                   {filteredUsers.map((u) => (
                     <button
                       key={u._id}
@@ -324,174 +396,231 @@ function Clients() {
                         setSearchUser(u.name);
                         setShowDropdown(false);
                       }}
-                      className="block w-full border-b border-slate-100 p-3 text-left transition last:border-0 hover:bg-blue-50"
+                      className="block w-full border-b border-slate-100 p-3 text-left transition last:border-0 hover:bg-blue-50/70"
                     >
-                      <p className="font-medium text-slate-800">{u.name}</p>
-                      <p className="text-sm text-slate-500">{u.email}</p>
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-100 font-bold text-blue-700 text-xs">
+                          {u.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{u.name}</p>
+                          <p className="text-[11px] text-slate-400">{u.email}</p>
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
               )}
               {showDropdown && filteredUsers.length === 0 && (
-                <p className="mt-2 text-sm text-slate-500">
+                <div className="absolute left-0 right-0 z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl text-xs text-slate-500 text-center">
                   {availableUsers.length === 0
-                    ? "All client accounts are already added."
-                    : "No available clients match your search."}
-                </p>
+                    ? "All available athlete accounts are already enrolled."
+                    : "No matching athlete accounts found."}
+                </div>
               )}
             </div>
 
             <button
               onClick={addClient}
               disabled={!selectedUser || isSubmitting}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="primary-button shrink-0"
             >
-              <Plus size={17} />
-              {isSubmitting ? "Adding..." : "Add Client"}
+              <Plus size={16} />
+              {isSubmitting ? "Enrolling..." : "Enroll to Roster"}
             </button>
           </div>
         </div>
 
-        {/* WORKOUT LIBRARY */}
-        <div className="glass-panel rounded-[28px] p-5">
-          <div className="mb-4 flex items-center justify-between">
+        {/* Global Exercise Template Library */}
+        <div className="glass-panel rounded-[28px] p-6">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Dumbbell size={18} className="text-blue-600" />
-              <h2 className="font-bold text-slate-800">Workout library</h2>
+              <h2 className="font-bold text-slate-800 text-base">Exercise Template Library</h2>
             </div>
-            <span className="text-xs text-slate-400">Click to assign to selected client or drag onto any client</span>
+            <span className="text-xs text-slate-400">
+              💡 Click to assign to current athlete, or drag onto any card below
+            </span>
           </div>
 
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row">
-            <input
-              value={newWorkout}
-              onChange={(e) => setNewWorkout(e.target.value)}
-              placeholder="New exercise template name..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none focus:border-blue-400 sm:max-w-xs"
-            />
-            <button
-              onClick={addWorkout}
-              className="primary-button"
-            >
-              Add template
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {workouts.map((w) => (
-              <div
-                key={w._id}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("workout", w.name)}
-                onClick={() => assignWorkout(w.name)}
-                title="Click to assign to current client or drag onto client card"
-                className="cursor-grab active:cursor-grabbing rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 shadow-sm"
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex-1 flex gap-2">
+              <input
+                value={newWorkout}
+                onChange={(e) => setNewWorkout(e.target.value)}
+                placeholder="New exercise name (e.g. Bulgarian Split Squat)..."
+                className="input-field"
+              />
+              <button
+                onClick={addWorkout}
+                disabled={!newWorkout.trim()}
+                className="primary-button shrink-0"
               >
-                {w.name}
-              </div>
-            ))}
+                <Plus size={15} />
+                Save Template
+              </button>
+            </div>
+
+            {/* Quick search library filter */}
+            <div className="relative w-full sm:w-60">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                value={librarySearch}
+                onChange={(e) => setLibrarySearch(e.target.value)}
+                placeholder="Filter templates..."
+                className="input-field pl-8 py-2 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Exercise chips */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+            {filteredLibrary.length > 0 ? (
+              filteredLibrary.map((w) => (
+                <div
+                  key={w._id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData("workout", w.name)}
+                  onClick={() => assignWorkout(w.name)}
+                  title="Click to assign or drag onto athlete"
+                  className="group cursor-grab active:cursor-grabbing inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 hover:shadow"
+                >
+                  <Dumbbell size={12} className="text-slate-400 group-hover:text-blue-600 transition" />
+                  <span>{w.name}</span>
+                  <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100 transition">+</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-slate-400 py-2">
+                No exercise templates match your search.
+              </p>
+            )}
           </div>
         </div>
 
+        {/* 2-Column: Athlete Roster + Selected Athlete Workouts */}
         <div className="grid items-start gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-
-          {/* CLIENT LIST */}
-          <div className="glass-panel rounded-[28px] p-5">
+          {/* Athlete Roster */}
+          <div className="glass-panel rounded-[28px] p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">Clients</h2>
-              <span className="text-xs text-slate-400">Select or drop workouts below</span>
+              <div>
+                <h2 className="font-bold text-slate-800 text-base">Athletes ({clients.length})</h2>
+                <p className="text-xs text-slate-400">Select to manage or drop workouts</p>
+              </div>
             </div>
 
             {clients.length === 0 ? (
-              <p className="text-sm text-slate-400">No clients yet. Add one from above.</p>
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center text-xs text-slate-400">
+                No athletes in your roster yet. Use the enrollment tool above.
+              </div>
             ) : (
-              clients.map((c) => (
-                <div
-                  key={c._id}
-                  onClick={() => setSelectedClient(c)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const name = e.dataTransfer.getData("workout");
-                    if (name) assignWorkout(name, c._id);
-                  }}
-                  className={`mb-2 flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition ${
-                    selectedClient?._id === c._id
-                      ? "border-blue-300 bg-blue-50 shadow-sm"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <div>
-                    <span className="font-semibold text-slate-700">{c.name}</span>
-                    <p className="text-xs text-slate-400">{(c.workouts || []).length} workouts assigned</p>
-                  </div>
-                  <span className="text-xs font-semibold text-blue-600 hover:underline">
-                    {selectedClient?._id === c._id ? "Viewing" : "Manage"}
-                  </span>
-                </div>
-              ))
+              <div className="space-y-2.5">
+                {clients.map((c) => {
+                  const isSelected = selectedClient?._id === c._id;
+                  const isDragOver = dragOverClientId === c._id;
+                  const total = (c.workouts || []).length;
+                  const done = (c.workouts || []).filter((w) => w.done).length;
+                  const percent = total ? Math.round((done / total) * 100) : 0;
+
+                  return (
+                    <div
+                      key={c._id}
+                      onClick={() => setSelectedClient(c)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOverClientId(c._id);
+                      }}
+                      onDragLeave={() => setDragOverClientId(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOverClientId(null);
+                        const name = e.dataTransfer.getData("workout");
+                        if (name) assignWorkout(name, c._id);
+                      }}
+                      className={`relative flex cursor-pointer items-center justify-between rounded-2xl border p-4 transition-all duration-200 ${
+                        isDragOver
+                          ? "border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-500/20"
+                          : isSelected
+                            ? "border-blue-500 bg-blue-50/70 shadow-sm ring-1 ring-blue-500/20"
+                            : "border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl font-bold text-sm ${
+                          isSelected
+                            ? "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
+                            : "bg-slate-100 text-slate-700"
+                        }`}>
+                          {c.name.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">{c.name}</p>
+                          <p className="text-xs text-slate-500">
+                            {done}/{total} completed ({percent}%)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isDragOver ? (
+                          <span className="rounded-full bg-emerald-500 text-white px-2.5 py-0.5 text-[11px] font-bold animate-pulse">
+                            Drop to Assign
+                          </span>
+                        ) : (
+                          <span className={`text-xs font-semibold ${isSelected ? "text-blue-700" : "text-slate-400"}`}>
+                            {isSelected ? "Managing" : "Select →"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
-          {/* WORKOUT SECTION */}
-          <div className="glass-panel rounded-[28px] p-5">
-
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">
-                {selectedClient
-                  ? `${selectedClient.name}'s Workouts`
-                  : "Select a client to view workouts"}
-              </h2>
+          {/* Selected Athlete Workspace */}
+          <div className="glass-panel rounded-[28px] p-6">
+            <div className="mb-4 flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h2 className="font-bold text-slate-900 text-base">
+                  {selectedClient ? `${selectedClient.name}'s Workout Routine` : "Workout Routine Manager"}
+                </h2>
+                <p className="text-xs text-slate-400">
+                  {selectedClient
+                    ? "Manage assigned sets, review completion, and write coaching cues."
+                    : "Select an athlete from the list on the left to begin."}
+                </p>
+              </div>
 
               {selectedClient && (
                 <button
                   onClick={() => setClientToDelete(selectedClient)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-sm font-semibold text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/70 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 transition"
                 >
-                  <Trash2 size={15} />
-                  Delete Client
+                  <Trash2 size={13} />
+                  Remove Athlete
                 </button>
               )}
             </div>
 
-            {selectedClient && (
+            {selectedClient ? (
               <>
-                <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <StickyNote size={16} className="text-blue-600" /> Add coach note
-                  </p>
-                  <textarea
-                    rows="3"
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder={`Write a coaching note for ${selectedClient.name}...`}
-                    className="w-full rounded-xl border border-blue-100 bg-white p-3 text-sm text-slate-700 outline-none focus:border-blue-400"
-                  />
-                  <button
-                    onClick={addCoachNote}
-                    disabled={!newNote.trim()}
-                    className="primary-button mt-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Save note
-                  </button>
-                </div>
-
-                {/* PROGRESS BAR */}
+                {/* Progress Bar Header */}
                 {(() => {
                   const total = selectedClient.workouts?.length || 0;
                   const done = selectedClient.workouts?.filter((w) => w.done).length || 0;
                   const percent = total ? Math.round((done / total) * 100) : 0;
 
                   return (
-                    <div className="mb-4">
-                      <div className="mb-1 flex justify-between text-sm">
-                        <span className="text-slate-500">Completion</span>
-                        <span className="font-semibold text-slate-700">{percent}% ({done}/{total})</span>
+                    <div className="mb-5 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                      <div className="mb-2 flex justify-between text-xs">
+                        <span className="font-semibold text-slate-600">Athlete Completion Progress</span>
+                        <span className="font-bold text-slate-900">{percent}% ({done} of {total} done)</span>
                       </div>
-
-                      <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
                         <div
-                          className="h-3 rounded-full bg-gradient-to-r from-emerald-400 to-green-500 transition-all duration-500"
+                          className="h-full rounded-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all duration-500"
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -499,85 +628,179 @@ function Clients() {
                   );
                 })()}
 
-                {/* BATCH ACTION CONTROLS */}
-                {selectedClient.workouts?.length > 0 && (
-                  <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-2">
+                {/* Filter Tabs & Batch Controls */}
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex rounded-xl bg-slate-100 p-1 text-xs font-semibold">
                     <button
-                      type="button"
-                      onClick={toggleSelectAllWorkouts}
-                      className="text-xs font-semibold text-slate-600 hover:text-blue-600"
+                      onClick={() => setWorkoutFilterTab("all")}
+                      className={`rounded-lg px-3 py-1.5 transition ${workoutFilterTab === "all" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
                     >
-                      {selectedWorkouts.length === selectedClient.workouts.length
-                        ? "Deselect All"
-                        : "Select All"}
+                      All ({(selectedClient.workouts || []).length})
                     </button>
+                    <button
+                      onClick={() => setWorkoutFilterTab("pending")}
+                      className={`rounded-lg px-3 py-1.5 transition ${workoutFilterTab === "pending" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Pending ({(selectedClient.workouts || []).filter((w) => !w.done).length})
+                    </button>
+                    <button
+                      onClick={() => setWorkoutFilterTab("completed")}
+                      className={`rounded-lg px-3 py-1.5 transition ${workoutFilterTab === "completed" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}`}
+                    >
+                      Done ({(selectedClient.workouts || []).filter((w) => w.done).length})
+                    </button>
+                  </div>
 
-                    {selectedWorkouts.length > 0 && (
+                  {visibleWorkouts.length > 0 && (
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={deleteMultiple}
-                        className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 transition"
+                        type="button"
+                        onClick={() => toggleSelectAllWorkouts(visibleWorkouts)}
+                        className="text-xs font-semibold text-slate-600 hover:text-blue-600"
                       >
-                        <Trash2 size={13} />
-                        Delete Selected ({selectedWorkouts.length})
+                        {visibleWorkouts.every((w) => selectedWorkouts.includes(w._id))
+                          ? "Deselect Tab"
+                          : "Select Tab"}
                       </button>
-                    )}
+
+                      {selectedWorkouts.length > 0 && (
+                        <button
+                          onClick={deleteMultiple}
+                          className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700 hover:bg-red-200 transition"
+                        >
+                          <Trash2 size={12} />
+                          Delete ({selectedWorkouts.length})
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Workouts List */}
+                <div className="space-y-2 mb-6">
+                  {visibleWorkouts.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-8 text-center text-xs text-slate-400">
+                      No workouts in this view. Click an exercise from the template library above to assign.
+                    </div>
+                  ) : (
+                    visibleWorkouts.map((w) => (
+                      <div
+                        key={w._id}
+                        className={`flex items-center gap-3 rounded-2xl border p-3.5 transition-all ${
+                          selectedWorkouts.includes(w._id)
+                            ? "border-blue-400 bg-blue-50/60"
+                            : w.done
+                              ? "border-emerald-200 bg-emerald-50/40"
+                              : "border-slate-200 bg-slate-50/70 hover:bg-white"
+                        }`}
+                      >
+                        {/* Batch selection checkbox */}
+                        <input
+                          type="checkbox"
+                          title="Select for batch delete"
+                          checked={selectedWorkouts.includes(w._id)}
+                          onChange={() => toggleSelectWorkout(w._id)}
+                          className="h-4 w-4 rounded accent-blue-600 cursor-pointer"
+                        />
+
+                        {/* Workout completion checkbox */}
+                        <input
+                          type="checkbox"
+                          title="Toggle completion status"
+                          checked={w.done || false}
+                          onChange={async () => {
+                            await API.put(`/clients/${selectedClient._id}/workout/${w._id}`);
+                            fetchClients();
+                          }}
+                          className="h-4 w-4 rounded accent-emerald-500 cursor-pointer"
+                        />
+
+                        <span className={`flex-1 text-sm font-semibold ${w.done ? "line-through text-slate-400" : "text-slate-800"}`}>
+                          {w.name}
+                        </span>
+
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                          w.done ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {w.done ? "Done" : "Pending"}
+                        </span>
+
+                        <button
+                          onClick={() => deleteWorkout(w._id)}
+                          className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
+                          title="Delete workout"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Coach Note Box */}
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <StickyNote size={15} className="text-blue-600" />
+                    <span>Add Coach Cue for {selectedClient.name}</span>
+                  </div>
+                  <textarea
+                    rows="3"
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder={`e.g. Focus on keeping the chest high during squats. Hydrate well before conditioning.`}
+                    className="w-full rounded-xl border border-blue-200/70 bg-white p-3 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                  <div className="mt-2.5 flex justify-end">
+                    <button
+                      onClick={addCoachNote}
+                      disabled={!newNote.trim()}
+                      className="primary-button text-xs py-2 px-4"
+                    >
+                      Save Coaching Note
+                    </button>
+                  </div>
+                </div>
+
+                {/* Existing Saved Coach Notes */}
+                {selectedClient.notes && selectedClient.notes.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      Saved Coaching Cues ({selectedClient.notes.length})
+                    </span>
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      {selectedClient.notes.map((note) => (
+                        <div
+                          key={note._id}
+                          className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-xs transition hover:border-slate-300"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-slate-800 font-medium leading-relaxed italic">"{note.text}"</p>
+                            <span className="text-[10px] text-slate-400 mt-1 block font-mono">
+                              {new Date(note.createdAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => deleteCoachNote(note._id)}
+                            className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition shrink-0"
+                            title="Delete note"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-
-                {selectedClient.workouts?.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-gray-400">
-                    No workouts assigned yet. Click or drag an exercise template from the library above.
-                  </p>
-                ) : (
-                  selectedClient.workouts.map((w) => (
-                    <div
-                      key={w._id}
-                      className={`mb-2 flex items-center gap-3 rounded-2xl border p-3 transition ${
-                        selectedWorkouts.includes(w._id)
-                          ? "border-blue-300 bg-blue-50/70"
-                          : "border-slate-200 bg-slate-50"
-                      }`}
-                    >
-                      {/* Selection checkbox for batch delete */}
-                      <input
-                        type="checkbox"
-                        title="Select for batch delete"
-                        checked={selectedWorkouts.includes(w._id)}
-                        onChange={() => toggleSelectWorkout(w._id)}
-                        className="h-4 w-4 rounded accent-blue-600"
-                      />
-
-                      {/* Workout completion checkbox */}
-                      <input
-                        type="checkbox"
-                        title="Mark workout complete"
-                        checked={w.done || false}
-                        onChange={async () => {
-                          await API.put(
-                            `/clients/${selectedClient._id}/workout/${w._id}`
-                          );
-                          fetchClients();
-                        }}
-                        className="h-4 w-4 rounded accent-emerald-500"
-                      />
-
-                      <span className={`flex-1 text-sm font-medium ${w.done ? "line-through text-slate-400" : "text-slate-700"}`}>
-                        {w.name}
-                      </span>
-
-                      <button
-                        onClick={() => deleteWorkout(w._id)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 size={14} />
-                        Remove
-                      </button>
-                    </div>
-                  ))
-                )}
               </>
+            ) : (
+              <div className="py-16 text-center text-slate-400">
+                <Users size={32} className="mx-auto mb-2 opacity-40 text-slate-400" />
+                <p className="text-sm font-semibold">No athlete selected</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Choose an athlete from the left column to view workouts and log cues.
+                </p>
+              </div>
             )}
-
           </div>
         </div>
       </div>
