@@ -680,7 +680,7 @@ function ClientDashboard() {
                       Calories
                     </span>
                     <span className="font-mono font-bold text-slate-800">
-                      {todayNutrition?.calories || 0} / {client?.nutritionTargets?.dailyCalories || 2200} kcal
+                      {todayNutrition?.calories || 0} / {client?.nutritionTargets?.calories || client?.nutritionTargets?.dailyCalories || 2200} kcal
                     </span>
                   </div>
                   <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
@@ -691,7 +691,7 @@ function ClientDashboard() {
                           100,
                           Math.round(
                             ((todayNutrition?.calories || 0) /
-                              (client?.nutritionTargets?.dailyCalories || 2200)) *
+                              (client?.nutritionTargets?.calories || client?.nutritionTargets?.dailyCalories || 2200)) *
                               100
                           )
                         )}%`,
@@ -708,10 +708,10 @@ function ClientDashboard() {
                       Hydration
                     </div>
                     <p className="mt-1 text-sm font-black text-slate-900 font-mono">
-                      {((todayNutrition?.waterMl || 0) / 1000).toFixed(1)}L
+                      {(((todayNutrition?.water || todayNutrition?.waterMl || 0)) / 1000).toFixed(1)}L
                     </p>
                     <p className="text-[10px] text-slate-400 font-medium">
-                      Target: {((client?.nutritionTargets?.waterMl || 3000) / 1000).toFixed(1)}L
+                      Target: {(((client?.nutritionTargets?.water || client?.nutritionTargets?.waterMl || 3000)) / 1000).toFixed(1)}L
                     </p>
                   </div>
 
@@ -724,7 +724,7 @@ function ClientDashboard() {
                       {(todayNutrition?.steps || 0).toLocaleString()}
                     </p>
                     <p className="text-[10px] text-slate-400 font-medium">
-                      Target: {(client?.nutritionTargets?.dailySteps || 10000).toLocaleString()}
+                      Target: {(client?.nutritionTargets?.steps || client?.nutritionTargets?.dailySteps || 10000).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -744,9 +744,10 @@ function ClientDashboard() {
                       </span>
                     </div>
                   </div>
-                  {latestMetric?.bodyFatPercent ? (
+                  {(latestMetric?.bodyFat !== undefined && latestMetric?.bodyFat !== null) ||
+                  (latestMetric?.bodyFatPercent !== undefined && latestMetric?.bodyFatPercent !== null) ? (
                     <span className="rounded-lg bg-purple-50 px-2 py-1 text-xs font-bold text-purple-700">
-                      {latestMetric.bodyFatPercent}% BF
+                      {latestMetric.bodyFat ?? latestMetric.bodyFatPercent}% BF
                     </span>
                   ) : null}
                 </div>

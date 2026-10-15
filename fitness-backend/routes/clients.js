@@ -417,14 +417,29 @@ router.post("/:id/nutrition-target", auth, async (req, res) => {
     const client = await Client.findById(req.params.id);
     if (!client) return res.status(404).json({ msg: "Client not found" });
 
-    const { calories, protein, carbs, fats, water, steps } = req.body;
+    const {
+      calories, dailyCalories,
+      protein, proteinGrams,
+      carbs, carbsGrams,
+      fats, fat, fatGrams,
+      water, waterMl,
+      steps, dailySteps
+    } = req.body;
+
+    const cal = calories !== undefined ? calories : dailyCalories;
+    const prot = protein !== undefined ? protein : proteinGrams;
+    const carb = carbs !== undefined ? carbs : carbsGrams;
+    const f = fats !== undefined ? fats : (fat !== undefined ? fat : fatGrams);
+    const w = water !== undefined ? water : waterMl;
+    const s = steps !== undefined ? steps : dailySteps;
+
     client.nutritionTargets = {
-      calories: Number(calories) || client.nutritionTargets?.calories || 2400,
-      protein: Number(protein) || client.nutritionTargets?.protein || 180,
-      carbs: Number(carbs) || client.nutritionTargets?.carbs || 250,
-      fats: Number(fats) || client.nutritionTargets?.fats || 70,
-      water: Number(water) || client.nutritionTargets?.water || 3500,
-      steps: Number(steps) || client.nutritionTargets?.steps || 10000,
+      calories: Number(cal) || client.nutritionTargets?.calories || 2400,
+      protein: Number(prot) || client.nutritionTargets?.protein || 180,
+      carbs: Number(carb) || client.nutritionTargets?.carbs || 250,
+      fats: Number(f) || client.nutritionTargets?.fats || 70,
+      water: Number(w) || client.nutritionTargets?.water || 3500,
+      steps: Number(s) || client.nutritionTargets?.steps || 10000,
     };
 
     await client.save();
@@ -444,27 +459,43 @@ router.post("/:id/nutrition-log", auth, async (req, res) => {
       return res.status(403).json({ msg: "Access denied" });
     }
 
-    const { date, calories, protein, carbs, fats, water, steps, notes } = req.body;
+    const {
+      date,
+      calories, dailyCalories,
+      protein, proteinGrams,
+      carbs, carbsGrams,
+      fats, fat, fatGrams,
+      water, waterMl,
+      steps, dailySteps,
+      notes
+    } = req.body;
+
     const logDate = date || new Date().toISOString().slice(0, 10);
+    const cal = calories !== undefined ? calories : dailyCalories;
+    const prot = protein !== undefined ? protein : proteinGrams;
+    const carb = carbs !== undefined ? carbs : carbsGrams;
+    const f = fats !== undefined ? fats : (fat !== undefined ? fat : fatGrams);
+    const w = water !== undefined ? water : waterMl;
+    const s = steps !== undefined ? steps : dailySteps;
 
     const existingIndex = client.nutritionLogs.findIndex((log) => log.date === logDate);
     if (existingIndex > -1) {
-      if (calories !== undefined) client.nutritionLogs[existingIndex].calories = Number(calories);
-      if (protein !== undefined) client.nutritionLogs[existingIndex].protein = Number(protein);
-      if (carbs !== undefined) client.nutritionLogs[existingIndex].carbs = Number(carbs);
-      if (fats !== undefined) client.nutritionLogs[existingIndex].fats = Number(fats);
-      if (water !== undefined) client.nutritionLogs[existingIndex].water = Number(water);
-      if (steps !== undefined) client.nutritionLogs[existingIndex].steps = Number(steps);
+      if (cal !== undefined) client.nutritionLogs[existingIndex].calories = Number(cal);
+      if (prot !== undefined) client.nutritionLogs[existingIndex].protein = Number(prot);
+      if (carb !== undefined) client.nutritionLogs[existingIndex].carbs = Number(carb);
+      if (f !== undefined) client.nutritionLogs[existingIndex].fats = Number(f);
+      if (w !== undefined) client.nutritionLogs[existingIndex].water = Number(w);
+      if (s !== undefined) client.nutritionLogs[existingIndex].steps = Number(s);
       if (notes !== undefined) client.nutritionLogs[existingIndex].notes = notes;
     } else {
       client.nutritionLogs.push({
         date: logDate,
-        calories: Number(calories) || 0,
-        protein: Number(protein) || 0,
-        carbs: Number(carbs) || 0,
-        fats: Number(fats) || 0,
-        water: Number(water) || 0,
-        steps: Number(steps) || 0,
+        calories: Number(cal) || 0,
+        protein: Number(prot) || 0,
+        carbs: Number(carb) || 0,
+        fats: Number(f) || 0,
+        water: Number(w) || 0,
+        steps: Number(s) || 0,
         notes: notes || "",
       });
     }
@@ -486,15 +517,17 @@ router.post("/:id/metric", auth, async (req, res) => {
       return res.status(403).json({ msg: "Access denied" });
     }
 
-    const { date, weight, bodyFat, waist, chest, notes } = req.body;
+    const { date, weight, bodyFat, bodyFatPercent, waist, chest, notes } = req.body;
     if (!weight) {
       return res.status(400).json({ msg: "Body weight is required" });
     }
 
+    const bf = bodyFat !== undefined ? bodyFat : bodyFatPercent;
+
     client.bodyMetrics.push({
       date: date || new Date().toISOString().slice(0, 10),
       weight: Number(weight),
-      bodyFat: bodyFat ? Number(bodyFat) : null,
+      bodyFat: bf ? Number(bf) : null,
       waist: waist ? Number(waist) : null,
       chest: chest ? Number(chest) : null,
       notes: notes || "",

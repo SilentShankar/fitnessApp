@@ -150,8 +150,8 @@ function Dashboard() {
   const nutritionSummary = clients.map((c) => {
     const latestLog = (c.nutritionLogs || []).slice(-1)[0] || null;
     const latestMetric = (c.bodyMetrics || []).slice(-1)[0] || null;
-    const targetCalories = c.nutritionTargets?.dailyCalories || 2400;
-    const targetWater = c.nutritionTargets?.waterMl || 3000;
+    const targetCalories = c.nutritionTargets?.calories || c.nutritionTargets?.dailyCalories || 2400;
+    const targetWater = c.nutritionTargets?.water || c.nutritionTargets?.waterMl || 3000;
     const loggedCalories = latestLog?.calories || 0;
     const calorieAdherence = targetCalories > 0 ? Math.round((loggedCalories / targetCalories) * 100) : 0;
     return {
@@ -742,7 +742,7 @@ function Dashboard() {
                     <div className="rounded-xl border border-slate-100 bg-white p-2">
                       <span className="text-[10px] text-slate-400 uppercase font-semibold block">Water</span>
                       <span className="font-bold text-slate-800 font-mono text-[11px]">
-                        {item.latestLog?.waterMl ? `${(item.latestLog.waterMl / 1000).toFixed(1)}L` : "-"}
+                        {(item.latestLog?.water || item.latestLog?.waterMl) ? `${(((item.latestLog.water || item.latestLog.waterMl)) / 1000).toFixed(1)}L` : "-"}
                       </span>
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-white p-2">
