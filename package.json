@@ -7,8 +7,9 @@
     "dev": "vite --host 127.0.0.1 --port 5173",
     "dev:backend": "node fitness-backend/local-server.js",
     "dev:all": "concurrently -n \"API,WEB\" -c \"magenta,cyan\" \"npm run dev:backend\" \"npm run dev\"",
-    "start": "npm run dev:all",
     "build": "vite build",
+    "start": "node start-production.cjs",
+    "postinstall": "npm --prefix fitness-backend install",
     "lint": "eslint .",
     "preview": "vite preview"
   },

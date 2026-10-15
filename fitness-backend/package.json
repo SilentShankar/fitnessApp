@@ -16,6 +16,7 @@
     "dns": "^0.2.2",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "forgefit-app": "file:..",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.1.1",
     "mongodb-memory-server": "^11.2.0",

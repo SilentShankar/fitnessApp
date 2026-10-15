@@ -22,20 +22,21 @@ const isDemoMode = isPlaceholderUri(process.env.MONGO_URI);
 app.use(cors());
 app.use(express.json());
 
+const fs = require("fs");
+const distPath = path.resolve(__dirname, "../dist");
+
+// Serve static frontend assets if built
+if (fs.existsSync(distPath)) {
+  console.log(`Serving static production build from ${distPath}`);
+  app.use(express.static(distPath));
+}
+
 // ✅ Health check & root endpoints
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
     mode: isDemoMode ? "demo" : "persistent",
     timestamp: new Date().toISOString(),
-  });
-});
-
-app.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "ForgeFit Performance API",
-    mode: isDemoMode ? "demo" : "persistent",
   });
 });
 
@@ -48,6 +49,30 @@ app.use("/auth", require("./routes/auth"));
 app.use("/clients", require("./routes/clients"));
 app.use("/workouts", require("./routes/workouts"));
 app.use("/programs", require("./routes/programs"));
+
+// ✅ SPA Client Routing Fallback or Root API Response
+if (fs.existsSync(distPath)) {
+  app.use((req, res, next) => {
+    if (
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth") ||
+      req.path.startsWith("/clients") ||
+      req.path.startsWith("/workouts") ||
+      req.path.startsWith("/programs")
+    ) {
+      return next();
+    }
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.json({
+      status: "ok",
+      service: "ForgeFit Performance API",
+      mode: isDemoMode ? "demo" : "persistent",
+    });
+  });
+}
 
 const seedDemoUsers = async () => {
   const demoUsers = [
@@ -390,17 +415,22 @@ const connectDatabase = async () => {
 };
 
 const startServer = async () => {
-  await connectDatabase();
-
-  app.listen(port, () => {
-    console.log(`Server running on port ${port} 🚀`);
+  const host = "0.0.0.0";
+  const server = app.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port} 🚀`);
   });
+
+  try {
+    await connectDatabase();
+  } catch (err) {
+    console.error("MongoDB startup failed:", err);
+  }
+
+  return server;
 };
 
 if (require.main === module) {
-  startServer().catch((err) => {
-    console.error("MongoDB startup failed:", err);
-  });
+  startServer();
 }
 
-module.exports = { app, connectDatabase };
+module.exports = { app, connectDatabase, startServer };
