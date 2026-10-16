@@ -17,6 +17,7 @@ import {
   Salad,
 } from "lucide-react";
 import API from "../api";
+import { getUser, logout } from "../utils/auth";
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -42,13 +43,12 @@ function Layout({ children }) {
   const [hasMessageUpdate, setHasMessageUpdate] = useState(false);
   const [messagePopup, setMessagePopup] = useState("");
 
-  const user = JSON.parse(localStorage.getItem("user") || "null") || {};
+  const user = getUser() || {};
   const name = user?.name || "User";
   const role = user?.role || "client";
 
   const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
+    logout();
   };
 
   const dashboardPath = role === "admin" ? "/dashboard" : "/client-dashboard";

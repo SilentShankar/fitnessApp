@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../api";
+import { setAuth } from "../utils/auth";
 import { LogIn, AlertCircle, Mail, Lock, Eye, EyeOff, ArrowLeft, Shield, User, Sparkles } from "lucide-react";
 
 const demoAccounts = [
@@ -39,8 +40,7 @@ function Login() {
         password: loginPassword,
       });
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      setAuth(res.data.token, res.data.user);
 
       if (res.data.user.role === "admin") {
         navigate("/dashboard");

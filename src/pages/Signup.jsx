@@ -1,5 +1,6 @@
 import { useState } from "react";
 import API from "../api";
+import { setAuth } from "../utils/auth";
 import { useNavigate, Link } from "react-router-dom";
 import { UserPlus, AlertCircle, Mail, Lock, User, Eye, EyeOff, ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 
@@ -36,8 +37,7 @@ export default function Signup() {
     try {
       const res = await API.post("/auth/signup", form);
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      setAuth(res.data.token, res.data.user);
       navigate("/client-dashboard");
     } catch (err) {
       setError(err.response?.data?.msg || "Signup failed. Please try a different email.");
