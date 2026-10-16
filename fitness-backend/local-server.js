@@ -40,27 +40,17 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ✅ Routes
+// ✅ API Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/clients", require("./routes/clients"));
 app.use("/api/workouts", require("./routes/workouts"));
 app.use("/api/programs", require("./routes/programs"));
-app.use("/auth", require("./routes/auth"));
-app.use("/clients", require("./routes/clients"));
-app.use("/workouts", require("./routes/workouts"));
-app.use("/programs", require("./routes/programs"));
 
 // ✅ SPA Client Routing Fallback or Root API Response
 if (fs.existsSync(distPath)) {
   app.use((req, res, next) => {
-    if (
-      req.path.startsWith("/api") ||
-      req.path.startsWith("/auth") ||
-      req.path.startsWith("/clients") ||
-      req.path.startsWith("/workouts") ||
-      req.path.startsWith("/programs")
-    ) {
-      return next();
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ msg: "API endpoint not found" });
     }
     res.sendFile(path.join(distPath, "index.html"));
   });
