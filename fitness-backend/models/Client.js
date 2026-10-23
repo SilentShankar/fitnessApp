@@ -15,6 +15,7 @@ const sessionSchema = new mongoose.Schema({
 
 const clientSchema = new mongoose.Schema({
   name: String,
+  email: String,
   goal: {
     type: String,
     default: "Peak Performance & Hypertrophy",

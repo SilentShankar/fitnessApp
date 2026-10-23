@@ -339,6 +339,7 @@ const seedDemoClients = async () => {
 
       await Client.create({
         name: assignment.name,
+        email: fallbackUser?.email,
         goal: assignment.goal,
         userId: fallbackUser?._id,
         workouts: assignment.workouts,

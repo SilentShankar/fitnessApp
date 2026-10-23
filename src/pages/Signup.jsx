@@ -105,7 +105,7 @@ export default function Signup() {
 
         {/* Right Side Form Panel */}
         <div className="flex flex-col justify-center bg-white p-8 sm:p-12">
-          <form onSubmit={handleSignup} className="w-full max-w-md mx-auto">
+          <form onSubmit={handleSignup} autoComplete="off" className="w-full max-w-md mx-auto">
             <div className="mb-6">
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-violet-600">Get Started</span>
               <h2 className="mt-1 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Create athlete account</h2>
@@ -129,6 +129,7 @@ export default function Signup() {
                   <input
                     name="name"
                     placeholder="Alex Morgan"
+                    autoComplete="off"
                     value={form.name}
                     onChange={handleChange}
                     required
@@ -146,6 +147,9 @@ export default function Signup() {
                   <input
                     name="email"
                     type="email"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck="false"
                     placeholder="alex@example.com"
                     value={form.email}
                     onChange={handleChange}
@@ -164,6 +168,7 @@ export default function Signup() {
                   <input
                     name="password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     placeholder="Min 6 characters"
                     value={form.password}
                     onChange={handleChange}

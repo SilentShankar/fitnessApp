@@ -219,11 +219,14 @@ function Schedule() {
                   {clients.length === 0 ? (
                     <option value="">No athletes available</option>
                   ) : (
-                    clients.map((client) => (
-                      <option key={client._id} value={client._id}>
-                        {client.name}
-                      </option>
-                    ))
+                    clients.map((client) => {
+                      const athleteEmail = client.email || (typeof client.userId === "object" ? client.userId?.email : "");
+                      return (
+                        <option key={client._id} value={client._id}>
+                          {client.name} {athleteEmail ? `(${athleteEmail})` : ""}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
               </div>

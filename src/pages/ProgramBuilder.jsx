@@ -66,10 +66,11 @@ function ProgramBuilder() {
       setClients(clientsResponse.data);
       setLibrary(libraryResponse.data);
       setPrograms(programsResponse.data);
-      if (clientsResponse.data[0]?.userId) {
+      const firstUserId = clientsResponse.data[0]?.userId?._id || clientsResponse.data[0]?.userId;
+      if (firstUserId) {
         setForm((current) => ({
           ...current,
-          assignedTo: current.assignedTo || clientsResponse.data[0].userId,
+          assignedTo: current.assignedTo || firstUserId,
         }));
       }
     } catch (err) {
@@ -314,11 +315,15 @@ function ProgramBuilder() {
                   className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-800 outline-none transition focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-100"
                 >
                   <option value="">Select an athlete...</option>
-                  {clients.map((client) => (
-                    <option key={client._id} value={client.userId}>
-                      {client.name} ({client.goal || "Athlete"})
-                    </option>
-                  ))}
+                  {clients.map((client) => {
+                    const uid = typeof client.userId === "object" ? client.userId?._id : (client.userId || client._id);
+                    const athleteEmail = client.email || (typeof client.userId === "object" ? client.userId?.email : "");
+                    return (
+                      <option key={client._id} value={uid}>
+                        {client.name} {athleteEmail ? `(${athleteEmail})` : `(${client.goal || "Athlete"})`}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
 

@@ -335,11 +335,14 @@ export default function Nutrition() {
                     onChange={(e) => handleClientSelect(e.target.value)}
                     className="bg-transparent text-xs font-bold text-white outline-none cursor-pointer"
                   >
-                    {clients.map((c) => (
-                      <option key={c._id} value={c._id} className="text-slate-900">
-                        {c.name}
-                      </option>
-                    ))}
+                    {clients.map((c) => {
+                      const athleteEmail = c.email || (typeof c.userId === "object" ? c.userId?.email : "");
+                      return (
+                        <option key={c._id} value={c._id} className="text-slate-900">
+                          {c.name} {athleteEmail ? `(${athleteEmail})` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}

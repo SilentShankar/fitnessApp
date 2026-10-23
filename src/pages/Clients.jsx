@@ -16,6 +16,8 @@ import {
   Sparkles,
   Layers,
   Flame,
+  RefreshCw,
+  UserCheck,
 } from "lucide-react";
 import API from "../api";
 
@@ -32,9 +34,11 @@ function Clients() {
   const [selectedWorkouts, setSelectedWorkouts] = useState([]);
   const [toast, setToast] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [clientToDelete, setClientToDelete] = useState(null);
 
   // New UI enhancement states
+  const [rosterSearch, setRosterSearch] = useState("");
   const [librarySearch, setLibrarySearch] = useState("");
   const [workoutFilterTab, setWorkoutFilterTab] = useState("all"); // 'all' | 'pending' | 'completed'
   const [dragOverClientId, setDragOverClientId] = useState(null);
@@ -78,6 +82,13 @@ function Clients() {
     }
   }, []);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([fetchClients(), fetchUsers(), fetchWorkouts()]);
+    setIsRefreshing(false);
+    showToast("Athlete roster refreshed ✅");
+  };
+
   useEffect(() => {
     fetchClients();
     fetchUsers();
@@ -102,14 +113,45 @@ function Clients() {
   }, [selectedClient?._id]);
 
   // Available client users not already enrolled
-  const availableUsers = users.filter(
-    (u) => !clients.some((c) => c.userId?.toString() === u._id)
-  );
+  const availableUsers = useMemo(() => {
+    return users.filter((u) => {
+      return !clients.some((c) => {
+        const cUid = c.userId?._id ? c.userId._id.toString() : c.userId?.toString();
+        return cUid === u._id?.toString();
+      });
+    });
+  }, [users, clients]);
 
-  const filteredUsers = availableUsers.filter((u) =>
-    u.name.toLowerCase().includes(searchUser.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchUser.toLowerCase())
-  );
+  const filteredUsers = useMemo(() => {
+    if (!searchUser.trim()) return availableUsers;
+    const q = searchUser.toLowerCase().trim();
+    return availableUsers.filter((u) =>
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q)
+    );
+  }, [availableUsers, searchUser]);
+
+  // Already enrolled active roster members matching search
+  const alreadyEnrolledMatches = useMemo(() => {
+    if (!searchUser.trim()) return [];
+    const q = searchUser.toLowerCase().trim();
+    return clients.filter((c) => {
+      const email = c.email || (typeof c.userId === "object" ? c.userId?.email : "") || "";
+      const name = c.name || "";
+      return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
+    });
+  }, [clients, searchUser]);
+
+  // Filtered athlete roster based on rosterSearch
+  const filteredClients = useMemo(() => {
+    if (!rosterSearch.trim()) return clients;
+    const q = rosterSearch.toLowerCase().trim();
+    return clients.filter((c) => {
+      const email = c.email || (typeof c.userId === "object" ? c.userId?.email : "") || "";
+      const name = c.name || "";
+      return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
+    });
+  }, [clients, rosterSearch]);
 
   // Filtered workout templates in library
   const filteredLibrary = useMemo(() => {
@@ -385,37 +427,88 @@ function Clients() {
                 className="input-field pl-10"
               />
 
-              {showDropdown && filteredUsers.length > 0 && (
-                <div className="absolute left-0 right-0 z-30 mt-2 max-h-60 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
-                  {filteredUsers.map((u) => (
-                    <button
-                      key={u._id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedUser(u);
-                        setSearchUser(u.name);
-                        setShowDropdown(false);
-                      }}
-                      className="block w-full border-b border-slate-100 p-3 text-left transition last:border-0 hover:bg-blue-50/70"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-100 font-bold text-blue-700 text-xs">
-                          {u.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-800">{u.name}</p>
-                          <p className="text-[11px] text-slate-400">{u.email}</p>
-                        </div>
+              {showDropdown && (
+                <div className="absolute left-0 right-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl p-1.5">
+                  {filteredUsers.length > 0 && (
+                    <div className="mb-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Available for Enrollment ({filteredUsers.length})
                       </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {showDropdown && filteredUsers.length === 0 && (
-                <div className="absolute left-0 right-0 z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl text-xs text-slate-500 text-center">
-                  {availableUsers.length === 0
-                    ? "All available athlete accounts are already enrolled."
-                    : "No matching athlete accounts found."}
+                      {filteredUsers.map((u) => (
+                        <button
+                          key={u._id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setSearchUser(u.name);
+                            setShowDropdown(false);
+                          }}
+                          className="block w-full rounded-xl p-2.5 text-left transition hover:bg-blue-50/70"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-100 font-bold text-blue-700 text-xs">
+                                {u.name ? u.name.charAt(0).toUpperCase() : "A"}
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-800">{u.name}</p>
+                                <p className="text-[11px] text-slate-400">{u.email}</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                              Select to Enroll →
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {alreadyEnrolledMatches.length > 0 && (
+                    <div className="border-t border-slate-100 pt-1">
+                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                        Already in Active Roster ({alreadyEnrolledMatches.length})
+                      </div>
+                      {alreadyEnrolledMatches.map((c) => (
+                        <button
+                          key={c._id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedClient(c);
+                            setShowDropdown(false);
+                            setSearchUser("");
+                            showToast(`Managing ${c.name} in studio`);
+                          }}
+                          className="block w-full rounded-xl p-2.5 text-left transition hover:bg-emerald-50/70"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 font-bold text-emerald-700 text-xs">
+                                {c.name ? c.name.charAt(0).toUpperCase() : "A"}
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-800">{c.name}</p>
+                                <p className="text-[11px] text-slate-400">
+                                  {c.email || (typeof c.userId === "object" ? c.userId?.email : "") || "Active Athlete"}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                              Active in Roster →
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {filteredUsers.length === 0 && alreadyEnrolledMatches.length === 0 && (
+                    <div className="p-4 text-xs text-slate-500 text-center">
+                      {availableUsers.length === 0
+                        ? "All registered athletes are enrolled in your active roster (see roster below)."
+                        : "No matching athlete accounts found."}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -507,20 +600,64 @@ function Clients() {
                 <h2 className="font-bold text-slate-800 text-base">Athletes ({clients.length})</h2>
                 <p className="text-xs text-slate-400">Select to manage or drop workouts</p>
               </div>
+
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-600 transition shadow-sm active:scale-95 disabled:opacity-50"
+                title="Synchronize athlete roster with newly registered users"
+              >
+                <RefreshCw size={13} className={isRefreshing ? "animate-spin text-blue-600" : ""} />
+                <span>{isRefreshing ? "Syncing..." : "Refresh Roster"}</span>
+              </button>
+            </div>
+
+            {/* Quick Filter Search for Roster */}
+            <div className="relative mb-3">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Filter roster by athlete name or email..."
+                value={rosterSearch}
+                onChange={(e) => setRosterSearch(e.target.value)}
+                className="input-field pl-8 pr-8 py-2 text-xs"
+              />
+              {rosterSearch && (
+                <button
+                  type="button"
+                  onClick={() => setRosterSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
 
             {clients.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center text-xs text-slate-400">
-                No athletes in your roster yet. Use the enrollment tool above.
+                No athletes in your roster yet. Use the enrollment tool above or have athletes register.
+              </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center text-xs text-slate-500">
+                No athlete matches "{rosterSearch}".
+                <button
+                  type="button"
+                  onClick={() => setRosterSearch("")}
+                  className="mt-2 block mx-auto text-xs font-bold text-blue-600 hover:underline"
+                >
+                  Clear search
+                </button>
               </div>
             ) : (
               <div className="space-y-2.5">
-                {clients.map((c) => {
+                {filteredClients.map((c) => {
                   const isSelected = selectedClient?._id === c._id;
                   const isDragOver = dragOverClientId === c._id;
                   const total = (c.workouts || []).length;
                   const done = (c.workouts || []).filter((w) => w.done).length;
                   const percent = total ? Math.round((done / total) * 100) : 0;
+                  const athleteEmail = c.email || (typeof c.userId === "object" ? c.userId?.email : "") || "";
 
                   return (
                     <div
@@ -551,11 +688,23 @@ function Clients() {
                             ? "bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
                             : "bg-slate-100 text-slate-700"
                         }`}>
-                          {c.name.charAt(0)}
+                          {c.name ? c.name.charAt(0).toUpperCase() : "A"}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 text-sm">{c.name}</p>
-                          <p className="text-xs text-slate-500">
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-slate-900 text-sm">{c.name}</p>
+                            {total === 0 && (
+                              <span className="rounded-full bg-blue-100 text-blue-700 px-2 py-0.2 text-[10px] font-bold">
+                                New
+                              </span>
+                            )}
+                          </div>
+                          {athleteEmail && (
+                            <p className="text-[11px] text-slate-400 leading-tight">
+                              {athleteEmail}
+                            </p>
+                          )}
+                          <p className="text-xs text-slate-500 mt-0.5">
                             {done}/{total} completed ({percent}%)
                           </p>
                         </div>

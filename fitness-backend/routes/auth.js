@@ -33,6 +33,7 @@ router.post("/signup", async (req, res) => {
       const Client = require("../models/Client");
       await Client.create({
         name: user.name,
+        email: user.email,
         userId: user._id,
         workouts: [
           { name: "Warm-up activation & mobility", done: false },

@@ -24,6 +24,7 @@ router.post("/", auth, async (req, res) => {
 
     const client = new Client({
       name: user.name,
+      email: user.email,
       userId: user._id,
       workouts: [],
     });
@@ -42,8 +43,37 @@ router.get("/", auth, async (req, res) => {
     return res.status(403).json({ msg: "Access denied" });
   }
 
-  const clients = await Client.find();
-  res.json(clients);
+  try {
+    // Auto-synchronize: ensure all users registered as client have a Client roster record
+    const clientUsers = await User.find({ role: "client" });
+    for (const u of clientUsers) {
+      const existing = await Client.findOne({ userId: u._id });
+      if (!existing) {
+        await Client.create({
+          name: u.name,
+          email: u.email,
+          userId: u._id,
+          workouts: [
+            { name: "Warm-up activation & mobility", done: false },
+            { name: "Full-body foundation circuit", done: false },
+            { name: "Post-session cooldown & stretch", done: false },
+          ],
+          notes: [
+            { text: "Welcome to ForgeFit! Ready to begin training." },
+          ],
+        });
+      } else if (!existing.email && u.email) {
+        existing.email = u.email;
+        await existing.save();
+      }
+    }
+
+    const clients = await Client.find().populate("userId", "name email role");
+    res.json(clients);
+  } catch (err) {
+    console.error("Error fetching clients:", err);
+    res.status(500).json({ msg: "Error fetching clients" });
+  }
 });
 
 // ✅ GET CURRENT CLIENT PROFILE
@@ -59,6 +89,7 @@ router.get("/me", auth, async (req, res) => {
 
       client = await Client.create({
         name: user.name,
+        email: user.email,
         userId: user._id,
         workouts: [
           { name: "Warm-up activation", done: true },

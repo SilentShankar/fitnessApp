@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import API from "../api";
 import { setAuth } from "../utils/auth";
@@ -29,6 +29,13 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeDemo, setActiveDemo] = useState("");
   const navigate = useNavigate();
+
+  // Reset inputs on initial mount to prevent browsers from autofilling stale account data
+  useEffect(() => {
+    setEmail("");
+    setPassword("");
+    setError("");
+  }, []);
 
   const performLogin = async (loginEmail, loginPassword) => {
     setError("");
@@ -135,7 +142,7 @@ function Login() {
 
         {/* Right Side Form Panel */}
         <div className="flex flex-col justify-center bg-white p-8 sm:p-12">
-          <form onSubmit={handleLogin} className="w-full max-w-md mx-auto">
+          <form onSubmit={handleLogin} autoComplete="off" className="w-full max-w-md mx-auto">
             <div className="mb-6">
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Secure Access</span>
               <h2 className="mt-1 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Welcome back</h2>
@@ -189,7 +196,12 @@ function Login() {
                 <div className="relative">
                   <Mail size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    name="forgefit_account_email"
                     type="email"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck="false"
                     placeholder="you@forgefit.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -206,7 +218,9 @@ function Login() {
                 <div className="relative">
                   <Lock size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
+                    name="forgefit_account_password"
                     type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
