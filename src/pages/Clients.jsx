@@ -131,17 +131,6 @@ function Clients() {
     );
   }, [availableUsers, searchUser]);
 
-  // Already enrolled active roster members matching search
-  const alreadyEnrolledMatches = useMemo(() => {
-    if (!searchUser.trim()) return [];
-    const q = searchUser.toLowerCase().trim();
-    return clients.filter((c) => {
-      const email = c.email || (typeof c.userId === "object" ? c.userId?.email : "") || "";
-      const name = c.name || "";
-      return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
-    });
-  }, [clients, searchUser]);
-
   // Filtered athlete roster based on rosterSearch
   const filteredClients = useMemo(() => {
     if (!rosterSearch.trim()) return clients;
@@ -161,23 +150,23 @@ function Clients() {
     );
   }, [workouts, librarySearch]);
 
-  // ADD CLIENT
-  const addClient = async () => {
-    if (!selectedUser) {
-      showToast("Select a client user first");
+  // ENROLL ATHLETE INTO ROSTER
+  const enrollUser = async (userToEnroll = selectedUser) => {
+    if (!userToEnroll) {
+      showToast("Select a registered user from the dropdown first");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await API.post("/clients", { userId: selectedUser._id });
+      await API.post("/clients", { userId: userToEnroll._id });
       setSelectedUser(null);
       setSearchUser("");
       setShowDropdown(false);
-      await fetchClients();
-      showToast("Athlete added successfully ✅");
+      await Promise.all([fetchClients(), fetchUsers()]);
+      showToast(`${userToEnroll.name} enrolled to athlete roster ✅`);
     } catch (err) {
-      showToast(err.response?.data?.msg || "Failed to add athlete");
+      showToast(err.response?.data?.msg || "Failed to enroll athlete");
     } finally {
       setIsSubmitting(false);
     }
@@ -422,91 +411,72 @@ function Clients() {
                 type="text"
                 placeholder="Search registered athletes..."
                 value={searchUser}
-                onChange={(e) => setSearchUser(e.target.value)}
+                onChange={(e) => {
+                  setSearchUser(e.target.value);
+                  setSelectedUser(null);
+                  setShowDropdown(true);
+                }}
                 onFocus={() => setShowDropdown(true)}
                 className="input-field pl-10"
               />
 
               {showDropdown && (
-                <div className="absolute left-0 right-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl p-1.5">
-                  {filteredUsers.length > 0 && (
-                    <div className="mb-1">
-                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        Available for Enrollment ({filteredUsers.length})
-                      </div>
-                      {filteredUsers.map((u) => (
-                        <button
-                          key={u._id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedUser(u);
-                            setSearchUser(u.name);
-                            setShowDropdown(false);
-                          }}
-                          className="block w-full rounded-xl p-2.5 text-left transition hover:bg-blue-50/70"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-100 font-bold text-blue-700 text-xs">
+                <div className="absolute left-0 right-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl p-2">
+                  <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100">
+                    <span>Registered Clients ({filteredUsers.length})</span>
+                    <span>Click user to select</span>
+                  </div>
+
+                  {filteredUsers.length > 0 ? (
+                    <div className="space-y-1 pt-1.5">
+                      {filteredUsers.map((u) => {
+                        const isChosen = selectedUser?._id === u._id;
+                        return (
+                          <div
+                            key={u._id}
+                            className={`flex items-center justify-between p-2.5 rounded-xl transition ${
+                              isChosen
+                                ? "bg-blue-50 border border-blue-200"
+                                : "hover:bg-slate-50 border border-transparent"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedUser(u);
+                                setSearchUser(u.name);
+                                setShowDropdown(false);
+                              }}
+                              className="flex flex-1 items-center gap-2.5 text-left min-w-0"
+                            >
+                              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 font-bold text-blue-700 text-xs shrink-0">
                                 {u.name ? u.name.charAt(0).toUpperCase() : "A"}
                               </div>
-                              <div>
-                                <p className="text-xs font-bold text-slate-800">{u.name}</p>
-                                <p className="text-[11px] text-slate-400">{u.email}</p>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-slate-800 truncate">{u.name}</p>
+                                <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
                               </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                              Select to Enroll →
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                            </button>
 
-                  {alreadyEnrolledMatches.length > 0 && (
-                    <div className="border-t border-slate-100 pt-1">
-                      <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                        Already in Active Roster ({alreadyEnrolledMatches.length})
-                      </div>
-                      {alreadyEnrolledMatches.map((c) => (
-                        <button
-                          key={c._id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedClient(c);
-                            setShowDropdown(false);
-                            setSearchUser("");
-                            showToast(`Managing ${c.name} in studio`);
-                          }}
-                          className="block w-full rounded-xl p-2.5 text-left transition hover:bg-emerald-50/70"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100 font-bold text-emerald-700 text-xs">
-                                {c.name ? c.name.charAt(0).toUpperCase() : "A"}
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-slate-800">{c.name}</p>
-                                <p className="text-[11px] text-slate-400">
-                                  {c.email || (typeof c.userId === "object" ? c.userId?.email : "") || "Active Athlete"}
-                                </p>
-                              </div>
-                            </div>
-                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                              Active in Roster →
-                            </span>
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={() => enrollUser(u)}
+                              className="ml-2 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-700 transition shadow-sm shrink-0 active:scale-95"
+                              title={`Enroll ${u.name} directly to roster`}
+                            >
+                              <Plus size={12} />
+                              Enroll
+                            </button>
                           </div>
-                        </button>
-                      ))}
+                        );
+                      })}
                     </div>
-                  )}
-
-                  {filteredUsers.length === 0 && alreadyEnrolledMatches.length === 0 && (
+                  ) : (
                     <div className="p-4 text-xs text-slate-500 text-center">
                       {availableUsers.length === 0
-                        ? "All registered athletes are enrolled in your active roster (see roster below)."
-                        : "No matching athlete accounts found."}
+                        ? "All registered clients are already enrolled in your active roster."
+                        : `No registered clients match "${searchUser}".`}
                     </div>
                   )}
                 </div>
@@ -514,12 +484,16 @@ function Clients() {
             </div>
 
             <button
-              onClick={addClient}
+              onClick={() => enrollUser()}
               disabled={!selectedUser || isSubmitting}
               className="primary-button shrink-0"
             >
               <Plus size={16} />
-              {isSubmitting ? "Enrolling..." : "Enroll to Roster"}
+              {isSubmitting
+                ? "Enrolling..."
+                : selectedUser
+                  ? `Enroll "${selectedUser.name}"`
+                  : "Enroll to Roster"}
             </button>
           </div>
         </div>

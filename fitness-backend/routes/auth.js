@@ -29,23 +29,6 @@ router.post("/signup", async (req, res) => {
 
     await user.save();
 
-    if (user.role === "client") {
-      const Client = require("../models/Client");
-      await Client.create({
-        name: user.name,
-        email: user.email,
-        userId: user._id,
-        workouts: [
-          { name: "Warm-up activation & mobility", done: false },
-          { name: "Full-body foundation circuit", done: false },
-          { name: "Post-session cooldown & stretch", done: false },
-        ],
-        notes: [
-          { text: "Welcome to ForgeFit! Your training journey begins today." },
-        ],
-      });
-    }
-
     const token = jwt.sign(
       { id: user._id, role: user.role },
       jwtSecret,

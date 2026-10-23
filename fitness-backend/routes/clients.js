@@ -9,65 +9,52 @@ const canAccessClient = (req, client) => (
   req.user.role === "admin" || client.userId?.toString() === req.user.id
 );
 
-// ✅ ADD CLIENT
+// ✅ ENROLL ATHLETE INTO ROSTER (Admin only)
 router.post("/", auth, async (req, res) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ msg: "Access denied" });
+  }
+
   try {
     const { userId } = req.body;
 
     const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ msg: "User not found" });
+    if (!user) return res.status(404).json({ msg: "User account not found" });
 
     const existing = await Client.findOne({ userId });
     if (existing) {
-      return res.status(400).json({ msg: "Client already added" });
+      return res.status(400).json({ msg: "Athlete is already enrolled in your active roster" });
     }
 
     const client = new Client({
       name: user.name,
       email: user.email,
       userId: user._id,
-      workouts: [],
+      workouts: [
+        { name: "Warm-up activation & mobility", done: false },
+        { name: "Full-body foundation circuit", done: false },
+        { name: "Post-session cooldown & stretch", done: false },
+      ],
+      notes: [
+        { text: "Enrolled into active training roster by coach." },
+      ],
     });
 
     await client.save();
     res.json(client);
 
   } catch (err) {
-    res.status(500).json({ msg: "Error adding client" });
+    res.status(500).json({ msg: "Error enrolling athlete" });
   }
 });
 
-// ✅ GET CLIENTS
+// ✅ GET ENROLLED ATHLETES (Admin only)
 router.get("/", auth, async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ msg: "Access denied" });
   }
 
   try {
-    // Auto-synchronize: ensure all users registered as client have a Client roster record
-    const clientUsers = await User.find({ role: "client" });
-    for (const u of clientUsers) {
-      const existing = await Client.findOne({ userId: u._id });
-      if (!existing) {
-        await Client.create({
-          name: u.name,
-          email: u.email,
-          userId: u._id,
-          workouts: [
-            { name: "Warm-up activation & mobility", done: false },
-            { name: "Full-body foundation circuit", done: false },
-            { name: "Post-session cooldown & stretch", done: false },
-          ],
-          notes: [
-            { text: "Welcome to ForgeFit! Ready to begin training." },
-          ],
-        });
-      } else if (!existing.email && u.email) {
-        existing.email = u.email;
-        await existing.save();
-      }
-    }
-
     const clients = await Client.find().populate("userId", "name email role");
     res.json(clients);
   } catch (err) {
@@ -79,38 +66,10 @@ router.get("/", auth, async (req, res) => {
 // ✅ GET CURRENT CLIENT PROFILE
 router.get("/me", auth, async (req, res) => {
   try {
-    let client = await Client.findOne({ userId: req.user.id });
+    const client = await Client.findOne({ userId: req.user.id });
 
     if (!client) {
-      const user = await User.findById(req.user.id);
-      if (!user) {
-        return res.status(404).json({ msg: "Client profile not found" });
-      }
-
-      client = await Client.create({
-        name: user.name,
-        email: user.email,
-        userId: user._id,
-        workouts: [
-          { name: "Warm-up activation", done: true },
-          { name: "Lower body strength", done: false },
-          { name: "Mobility flow", done: false },
-          { name: "Post-session recovery", done: false },
-        ],
-        sessions: [
-          {
-            title: "1:1 coaching session",
-            date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-            time: "18:30",
-            type: "Strength",
-            status: "Confirmed",
-            meetingLink: "https://zoom.us/j/demo-client",
-          },
-        ],
-        notes: [
-          { text: "Great consistency this week. Keep the recovery work consistent." },
-        ],
-      });
+      return res.status(404).json({ msg: "Athlete profile not yet enrolled by coach." });
     }
 
     res.json(client);
