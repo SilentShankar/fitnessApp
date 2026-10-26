@@ -395,7 +395,7 @@ function Clients() {
         </div>
 
         {/* Enroll Athlete Account Card */}
-        <div className="glass-panel rounded-[28px] p-6">
+        <div className="glass-panel relative z-40 rounded-[28px] p-6 overflow-visible">
           <div className="mb-3 flex items-center gap-2">
             <Users size={18} className="text-blue-600" />
             <h2 className="font-bold text-slate-800 text-base">Enroll Athlete Account</h2>
@@ -416,12 +416,28 @@ function Clients() {
                   setSelectedUser(null);
                   setShowDropdown(true);
                 }}
-                onFocus={() => setShowDropdown(true)}
-                className="input-field pl-10"
+                onFocus={() => {
+                  fetchUsers();
+                  setShowDropdown(true);
+                }}
+                className="input-field pl-10 pr-9"
               />
+              {searchUser && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchUser("");
+                    setSelectedUser(null);
+                  }}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
 
               {showDropdown && (
-                <div className="absolute left-0 right-0 z-30 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl p-2">
+                <div className="absolute left-0 right-0 z-50 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl p-2.5 ring-1 ring-slate-900/10">
                   <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100">
                     <span>Registered Clients ({filteredUsers.length})</span>
                     <span>Click user to select</span>
@@ -499,7 +515,7 @@ function Clients() {
         </div>
 
         {/* Global Exercise Template Library */}
-        <div className="glass-panel rounded-[28px] p-6">
+        <div className="glass-panel relative z-10 rounded-[28px] p-6">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Dumbbell size={18} className="text-blue-600" />

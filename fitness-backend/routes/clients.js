@@ -41,6 +41,7 @@ router.post("/", auth, async (req, res) => {
     });
 
     await client.save();
+    try { require("../services/storageBackup").debouncedSaveSnapshot(); } catch (e) {}
     res.json(client);
 
   } catch (err) {
@@ -316,6 +317,7 @@ router.delete("/:id", auth, async (req, res) => {
       return res.status(404).json({ msg: "Client not found" });
     }
 
+    try { require("../services/storageBackup").debouncedSaveSnapshot(); } catch (e) {}
     res.json({ msg: "Client deleted" });
 
   } catch {

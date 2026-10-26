@@ -29,6 +29,13 @@ router.post("/signup", async (req, res) => {
 
     await user.save();
 
+    try {
+      const { saveSnapshot } = require("../services/storageBackup");
+      saveSnapshot().catch((e) => console.error("Snapshot error on signup:", e.message));
+    } catch (e) {
+      console.error("Backup trigger error:", e.message);
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
       jwtSecret,

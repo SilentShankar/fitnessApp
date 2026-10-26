@@ -402,6 +402,12 @@ const connectDatabase = async () => {
     await seedDemoWorkouts();
     await seedDemoClients();
     await seedDemoPrograms();
+    try {
+      const { restoreSnapshot } = require("./services/storageBackup");
+      await restoreSnapshot();
+    } catch (e) {
+      console.error("Error restoring snapshot:", e.message);
+    }
   }
 };
 
@@ -425,3 +431,17 @@ if (require.main === module) {
 }
 
 module.exports = { app, connectDatabase, startServer };
+
+// Graceful shutdown with state backup
+const { saveSnapshot } = require("./services/storageBackup");
+const handleShutdown = async (signal) => {
+  console.log(`Received ${signal}. Saving persistent database snapshot...`);
+  try {
+    await saveSnapshot();
+  } catch (e) {
+    console.error("Error during shutdown save:", e);
+  }
+  process.exit(0);
+};
+process.on("SIGTERM", () => handleShutdown("SIGTERM"));
+process.on("SIGINT", () => handleShutdown("SIGINT"));

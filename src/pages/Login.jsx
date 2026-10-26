@@ -134,7 +134,7 @@ function Login() {
               </div>
               <div className="flex-1 rounded-xl border border-white/10 bg-white/5 p-3">
                 <span className="text-blue-200 block text-[10px] uppercase font-semibold">Database</span>
-                <span className="font-bold text-white">In-Memory Sync</span>
+                <span className="font-bold text-white">Persistent Sync</span>
               </div>
             </div>
           </div>
